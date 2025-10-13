@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Customer extends Model
+{
+    protected $fillable = ['nombre','es_empresa','telefono','direccion_entrega','email'];
+
+    public function orders() {
+        return $this->hasMany(Order::class);
+    }
+}
