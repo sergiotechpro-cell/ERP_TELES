@@ -22,7 +22,8 @@ use App\Http\Controllers\{
 | Web Routes
 |--------------------------------------------------------------------------
 | Rutas del ERP SRDigitalPro.
-| Requieren autenticación para acceder a los módulos.
+| ⚠️ ATENCIÓN: Middleware de autenticación COMENTADO para desarrollo/testing
+| ⚠️ IMPORTANTE: Descomentar el middleware antes de subir a producción
 |--------------------------------------------------------------------------
 */
 
@@ -31,7 +32,8 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 // Rutas de autenticación de Breeze (login, logout, register, etc.)
 require __DIR__ . '/auth.php';
 
-Route::middleware(['auth'])->group(function () {
+// ⚠️ MIDDLEWARE DE AUTENTICACIÓN COMENTADO
+// Route::middleware(['auth'])->group(function () {
 
     // ================== DASHBOARD ==================
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -97,7 +99,8 @@ Route::middleware(['auth'])->group(function () {
     // ================== ROLES / PERMISOS ==================
     Route::get('/roles/seed', [RoleController::class, 'seed'])->name('roles.seed');
     Route::post('/roles/assign', [RoleController::class, 'assign'])->name('roles.assign');
-});
+
+// }); // ⚠️ FIN DEL GRUPO DE AUTENTICACIÓN COMENTADO
 
 // Fallback 404 simple
 Route::fallback(fn () => response()->view('errors.404', [], 404));
