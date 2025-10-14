@@ -208,7 +208,7 @@
     <header class="header-erp">
         <div class="erp-title">
             <i class="bi bi-boxes"></i>
-            <span>SRDigitalPro ERP</span>
+            <span>GRC ELECTRONICS</span>
         </div>
 
         <div class="user-box">
