@@ -28,11 +28,28 @@ class RouteController extends Controller
 
     public function compute(Order $pedido)
     {
-        // Requiere que el pedido tenga lat/lng o al menos dirección para geocodificar
-        $origin = [
-            'lat' => (float) (env('WAREHOUSE_ORIGIN_LAT', 19.432608)),
-            'lng' => (float) (env('WAREHOUSE_ORIGIN_LNG', -99.133209)),
-        ];
+        // Obtener coordenadas de origen desde bodega principal o variables de entorno
+        $warehouse = \App\Models\Warehouse::whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->orderBy('id')
+            ->first();
+        
+        if ($warehouse) {
+            $origin = [
+                'lat' => (float) $warehouse->lat,
+                'lng' => (float) $warehouse->lng,
+                'name' => $warehouse->nombre,
+                'address' => $warehouse->direccion ?? 'Bodega Principal',
+            ];
+        } else {
+            // Fallback a variables de entorno o CDMX por defecto
+            $origin = [
+                'lat' => (float) (env('WAREHOUSE_ORIGIN_LAT', 19.432608)),
+                'lng' => (float) (env('WAREHOUSE_ORIGIN_LNG', -99.133209)),
+                'name' => 'Bodega Principal',
+                'address' => env('WAREHOUSE_ORIGIN_ADDRESS', 'Ciudad de México, México'),
+            ];
+        }
 
         // Si no tiene coordenadas, intentar usar la dirección para geocodificar
         $dest = [

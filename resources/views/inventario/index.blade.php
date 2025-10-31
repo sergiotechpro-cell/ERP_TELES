@@ -9,6 +9,9 @@
     <h2 class="fw-bold mb-0"><i class="bi bi-boxes me-2"></i> Inventario</h2>
     <div class="d-flex gap-2">
       <x-searchbar :action="route('inventario.index')" />
+      <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-outline-primary">
+        <i class="bi bi-building"></i> Bodegas
+      </a>
       <a href="{{ route('inventario.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg"></i> Nuevo Producto
       </a>

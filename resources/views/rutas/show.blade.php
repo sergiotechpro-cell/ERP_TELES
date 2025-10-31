@@ -15,7 +15,12 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <h6 class="fw-bold mb-2">Detalles</h6>
-        <div class="small text-secondary mb-2">Pedido</div>
+        <div class="small text-secondary mb-2">Origen</div>
+        <div class="fw-semibold">{{ $origin['name'] ?? 'Bodega Principal' }}</div>
+        @if(isset($origin['address']))
+          <div class="small text-secondary">{{ $origin['address'] }}</div>
+        @endif
+        <div class="small text-secondary mt-3 mb-2">Pedido</div>
         <div class="fw-semibold">#{{ $pedido->id }}</div>
         <div class="small text-secondary mt-3 mb-2">Dirección entrega</div>
         <div>{{ $dest['address'] }}</div>

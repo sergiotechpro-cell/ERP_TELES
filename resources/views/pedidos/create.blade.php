@@ -39,7 +39,11 @@
 
           <div class="col-12">
             <label class="form-label">Dirección de entrega <span class="text-danger">*</span></label>
-            <input name="direccion_entrega" class="form-control" required placeholder="Calle, número, colonia, ciudad">
+            <input name="direccion_entrega" id="direccion_entrega" class="form-control" required 
+                   placeholder="Escribe la dirección y selecciona una opción">
+            <input type="hidden" name="lat" id="address_lat">
+            <input type="hidden" name="lng" id="address_lng">
+            <div id="address_validation_info" class="mt-2"></div>
           </div>
 
           <div class="col-md-4">
@@ -55,6 +59,11 @@
             <button type="button" class="btn btn-outline-primary w-100" id="btnCalcEnvio">
               <i class="bi bi-geo-alt"></i> Calcular envío
             </button>
+          </div>
+          <div class="col-12">
+            <div id="distance_info" class="alert alert-info d-none">
+              <i class="bi bi-info-circle"></i> <span id="distance_text"></span>
+            </div>
           </div>
         </div>
 
@@ -94,13 +103,228 @@
 @endsection
 
 @push('scripts')
+@if($mapsKey)
+<script>
+  // Hacer función global para callback de Google Maps
+  window.initAddressAutocomplete = function() {
+    initAddressAutocompleteCallback();
+  };
+</script>
+<script async
+  src="https://maps.googleapis.com/maps/api/js?key={{ $mapsKey }}&libraries=places,distance-matrix&v=weekly&callback=initAddressAutocomplete">
+</script>
+@endif
 <script>
   // Arrays ya preparados en el controlador:
   const productos = @json($prodRows);
   const bodegas   = @json($bodRows);
+  const mapsKey   = @json($mapsKey ?? null);
+  const originLat = {{ $originLat ?? 19.432608 }};
+  const originLng = {{ $originLng ?? -99.133209 }};
 
   const tbody     = document.querySelector('#itemsTable tbody');
   const addRowBtn = document.getElementById('addRow');
+  
+  let autocomplete = null;
+  let selectedPlace = null;
+  
+  // Inicializar autocompletado de direcciones
+  @if($mapsKey)
+  function initAddressAutocompleteCallback() {
+    const addressInput = document.getElementById('direccion_entrega');
+    
+    // Configurar autocompletado con restricciones de país (México)
+    autocomplete = new google.maps.places.Autocomplete(addressInput, {
+      componentRestrictions: { country: ['mx'] },
+      fields: ['formatted_address', 'geometry', 'address_components', 'place_id'],
+      types: ['address']
+    });
+
+    // Cuando se selecciona una dirección
+    autocomplete.addListener('place_changed', function() {
+      selectedPlace = autocomplete.getPlace();
+      
+      if (!selectedPlace.geometry) {
+        console.warn('No se encontró geometría para el lugar seleccionado');
+        return;
+      }
+
+      // Guardar coordenadas
+      const lat = selectedPlace.geometry.location.lat();
+      const lng = selectedPlace.geometry.location.lng();
+      
+      document.getElementById('address_lat').value = lat;
+      document.getElementById('address_lng').value = lng;
+      
+      // Usar la dirección formateada oficial
+      addressInput.value = selectedPlace.formatted_address;
+      
+      // Validar dirección con Address Validation API
+      validateAddress(selectedPlace);
+      
+      // Calcular distancia automáticamente
+      calculateDistance(lat, lng);
+    });
+
+    // Validar cuando el usuario termine de escribir (después de 1 segundo sin escribir)
+    let validationTimeout;
+    addressInput.addEventListener('input', function() {
+      clearTimeout(validationTimeout);
+      validationTimeout = setTimeout(() => {
+        if (addressInput.value.length > 10 && !selectedPlace) {
+          // Intentar validar si no hay lugar seleccionado
+          const geocoder = new google.maps.Geocoder();
+          geocoder.geocode({ address: addressInput.value }, function(results, status) {
+            if (status === 'OK' && results[0]) {
+              validateAddressInput(results[0]);
+            }
+          });
+        }
+      }, 1000);
+    });
+  }
+  
+  // Validar dirección usando Address Validation API
+  async function validateAddress(place) {
+    const validationInfo = document.getElementById('address_validation_info');
+    
+    if (!mapsKey) {
+      validationInfo.innerHTML = '<small class="text-secondary">API key no configurada</small>';
+      return;
+    }
+
+    try {
+      const response = await fetch('https://addressvalidation.googleapis.com/v1:validateAddress?key=' + mapsKey, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          address: {
+            addressLines: [place.formatted_address],
+            regionCode: 'MX'
+          }
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.result && data.result.verdict) {
+        const verdict = data.result.verdict;
+        const address = data.result.address || {};
+        
+        if (verdict.validationGranularity === 'PREMISE' || verdict.validationGranularity === 'SUB_PREMISE') {
+          validationInfo.innerHTML = `
+            <div class="alert alert-success py-2 mb-0">
+              <i class="bi bi-check-circle"></i> 
+              <small>Dirección válida y completa</small>
+            </div>
+          `;
+        } else if (verdict.validationGranularity === 'ROUTE' || verdict.validationGranularity === 'LOCALITY') {
+          validationInfo.innerHTML = `
+            <div class="alert alert-warning py-2 mb-0">
+              <i class="bi bi-exclamation-triangle"></i> 
+              <small>Dirección parcial - verifica el número de casa</small>
+            </div>
+          `;
+        } else {
+          validationInfo.innerHTML = `
+            <div class="alert alert-warning py-2 mb-0">
+              <i class="bi bi-info-circle"></i> 
+              <small>Dirección validada en nivel: ${verdict.validationGranularity}</small>
+            </div>
+          `;
+        }
+        
+        // Mostrar dirección formateada sugerida si existe
+        if (address.formattedAddress && address.formattedAddress !== place.formatted_address) {
+          validationInfo.innerHTML += `
+            <div class="mt-1">
+              <small class="text-secondary">Sugerencia: ${address.formattedAddress}</small>
+            </div>
+          `;
+        }
+      }
+    } catch (error) {
+      console.error('Error al validar dirección:', error);
+      validationInfo.innerHTML = '<small class="text-secondary">No se pudo validar la dirección</small>';
+    }
+  }
+  
+  // Validar dirección desde input manual
+  function validateAddressInput(result) {
+    const validationInfo = document.getElementById('address_validation_info');
+    const lat = result.geometry.location.lat();
+    const lng = result.geometry.location.lng();
+    
+    document.getElementById('address_lat').value = lat;
+    document.getElementById('address_lng').value = lng;
+    
+    calculateDistance(lat, lng);
+    
+    validationInfo.innerHTML = `
+      <div class="alert alert-info py-2 mb-0">
+        <i class="bi bi-info-circle"></i> 
+        <small>Dirección encontrada</small>
+      </div>
+    `;
+  }
+  
+  // Calcular distancia desde origen
+  function calculateDistance(destLat, destLng) {
+    if (!mapsKey) return;
+    
+    const distanceInfo = document.getElementById('distance_info');
+    const distanceText = document.getElementById('distance_text');
+    
+    const origin = { lat: originLat, lng: originLng };
+    const destination = { lat: destLat, lng: destLng };
+    
+    const service = new google.maps.DistanceMatrixService();
+    
+    service.getDistanceMatrix({
+      origins: [origin],
+      destinations: [destination],
+      travelMode: google.maps.TravelMode.DRIVING,
+      unitSystem: google.maps.UnitSystem.METRIC
+    }, function(response, status) {
+      if (status === 'OK' && response.rows[0].elements[0].status === 'OK') {
+        const element = response.rows[0].elements[0];
+        const distance = element.distance.value / 1000; // en km
+        const duration = element.duration.text;
+        
+        distanceText.textContent = `Distancia: ${element.distance.text} | Tiempo: ${duration}`;
+        distanceInfo.classList.remove('d-none');
+        
+        // Actualizar campo de km y calcular costo automáticamente
+        document.getElementById('km').value = distance.toFixed(2);
+        document.getElementById('costo_envio').value = calcularEnvio(distance);
+      } else {
+        distanceInfo.classList.add('d-none');
+      }
+    });
+  }
+  @else
+  // Si no hay API key, función dummy
+  function initAddressAutocomplete() {
+    // API key no configurada
+    const validationInfo = document.getElementById('address_validation_info');
+    if (validationInfo) {
+      validationInfo.innerHTML = `
+        <div class="alert alert-warning py-2 mb-0">
+          <i class="bi bi-exclamation-triangle"></i> 
+          <small>Configure GOOGLE_MAPS_API_KEY para habilitar autocompletado de direcciones</small>
+        </div>
+      `;
+    }
+  }
+  
+  // Función dummy para calculateDistance cuando no hay API key
+  function calculateDistance(destLat, destLng) {
+    // No hacer nada si no hay API key
+    return;
+  }
+  @endif
 
   function optionList(arr, value = 'id', label = 'nombre') {
     return arr.map(o => `<option value="${o[value]}">${o[label]}</option>`).join('');
@@ -160,9 +384,24 @@
     if (km <= 10) return 100;
     return 100 + Math.ceil(km - 10) * 10;
   }
+  
   document.getElementById('btnCalcEnvio').addEventListener('click', () => {
-    document.getElementById('costo_envio').value =
-      calcularEnvio(document.getElementById('km').value);
+    const kmInput = document.getElementById('km');
+    const lat = document.getElementById('address_lat').value;
+    const lng = document.getElementById('address_lng').value;
+    
+    // Si hay coordenadas, recalcular distancia
+    if (lat && lng && mapsKey) {
+      calculateDistance(parseFloat(lat), parseFloat(lng));
+    } else {
+      // Calcular solo con el km manual
+      document.getElementById('costo_envio').value = calcularEnvio(kmInput.value);
+    }
+  });
+  
+  // Calcular costo cuando cambia el km manualmente
+  document.getElementById('km').addEventListener('input', function() {
+    document.getElementById('costo_envio').value = calcularEnvio(this.value);
   });
 
   // Serializa "productos[...]" al enviar

@@ -21,7 +21,10 @@ WAREHOUSE_ORIGIN_LNG=-99.133209
 1. Ve a [Google Cloud Console](https://console.cloud.google.com/)
 2. Crea un nuevo proyecto o selecciona uno existente
 3. Habilita las siguientes APIs:
-   - **Maps JavaScript API** (para mostrar mapas en el navegador)
+   - **Maps JavaScript API** (para mostrar mapas en el navegador) ⚠️ REQUERIDA
+   - **Places API** (para autocompletado de direcciones) ⚠️ REQUERIDA
+   - **Address Validation API** (para validar direcciones) ⚠️ REQUERIDA
+   - **Distance Matrix API** (para calcular distancias y tiempos) ⚠️ REQUERIDA
    - **Directions API** (para calcular rutas)
    - **Geocoding API** (opcional, para convertir direcciones en coordenadas)
    - **Routes API** (opcional, versión nueva)
@@ -38,6 +41,22 @@ WAREHOUSE_ORIGIN_LNG=-99.133209
 - Si solo configuras `GOOGLE_MAPS_API_KEY`, se usará esa para ambos propósitos
 - La geocodificación automática solo funciona si habilitas la Geocoding API
 - Asegúrate de habilitar facturación en Google Cloud para usar las APIs
+
+## Funcionalidades Integradas
+
+### ✨ Autocompletado de Direcciones
+Al crear un nuevo pedido, el campo "Dirección de entrega" incluye:
+- **Autocompletado inteligente** con Places API (solo direcciones de México)
+- **Validación automática** con Address Validation API
+- **Cálculo automático de coordenadas** (lat/lng)
+- **Cálculo automático de distancia y tiempo** desde la bodega origen
+- **Cálculo automático del costo de envío** basado en la distancia real
+
+### 🗺️ Visualización de Rutas
+En el módulo de Rutas y Entregas:
+- Visualización interactiva de mapas
+- Cálculo de rutas óptimas
+- Información de distancia y tiempo estimado
 
 ## Módulos del Sistema
 

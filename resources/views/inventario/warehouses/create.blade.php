@@ -5,13 +5,25 @@
 <x-flash />
 
 <div class="container" style="max-width: 820px;">
-  <div class="d-flex align-items-center justify-content-between mb-4">
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <h3 class="fw-bold mb-0">
       <i class="bi bi-building-add me-2"></i>Nueva bodega
     </h3>
+    <div class="d-flex gap-2">
+      <a href="{{ route('inventario.create') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-box-seam"></i> Crear producto
+      </a>
       <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">
         <i class="bi bi-arrow-left"></i> Volver
       </a>
+    </div>
+  </div>
+
+  <div class="alert alert-info border-0 shadow-sm d-flex align-items-start mb-4" style="border-radius:12px;">
+    <i class="bi bi-info-circle me-2 mt-1"></i>
+    <div class="flex-fill">
+      <strong>Importante:</strong> La dirección y coordenadas de la bodega son obligatorias. Las coordenadas se usarán automáticamente como punto de origen para calcular rutas de entrega.
+    </div>
   </div>
 
   <div class="card border-0 shadow-sm" style="border-radius:16px;">
@@ -43,11 +55,19 @@
           </div>
         </div>
 
-        <div class="col-12 d-flex justify-content-end gap-2">
-          <a href="{{ route('inventario.index') }}" class="btn btn-light">Cancelar</a>
-          <button type="submit" class="btn btn-primary" id="btnGuardarBodega">
-            <i class="bi bi-check2-circle"></i> Guardar
-          </button>
+        <div class="col-12 d-flex justify-content-between align-items-center">
+          <div>
+            <label class="form-check-label d-flex align-items-center">
+              <input type="checkbox" name="crear_otro" value="1" class="form-check-input me-2">
+              <span class="small text-secondary">Crear otra bodega después</span>
+            </label>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">Cancelar</a>
+            <button type="submit" class="btn btn-primary" id="btnGuardarBodega">
+              <i class="bi bi-check2-circle"></i> Guardar bodega
+            </button>
+          </div>
         </div>
       </form>
     </div>

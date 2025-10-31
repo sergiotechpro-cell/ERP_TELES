@@ -44,7 +44,27 @@ class OrderController extends Controller
             return ['id' => $b->id, 'nombre' => $b->nombre];
         })->values();
 
-        return view('pedidos.create', compact('productos','bodegas','prodRows','bodRows'));
+        // API Key para Google Maps/Places
+        $mapsKey = config('services.google.maps_key');
+        
+        // Obtener coordenadas de origen desde bodega principal o variables de entorno
+        $warehouse = Warehouse::whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->orderBy('id')
+            ->first();
+        
+        if ($warehouse) {
+            $originLat = (float) $warehouse->lat;
+            $originLng = (float) $warehouse->lng;
+            $originName = $warehouse->nombre;
+        } else {
+            // Fallback a variables de entorno o CDMX por defecto
+            $originLat = (float) (env('WAREHOUSE_ORIGIN_LAT', 19.432608));
+            $originLng = (float) (env('WAREHOUSE_ORIGIN_LNG', -99.133209));
+            $originName = 'Bodega Principal';
+        }
+
+        return view('pedidos.create', compact('productos','bodegas','prodRows','bodRows','mapsKey','originLat','originLng','originName'));
     }
 
     public function store(Request $r)
@@ -55,6 +75,8 @@ class OrderController extends Controller
             'costo_envio'       => ['nullable','numeric','min:0'],
             'cliente_nombre'    => ['nullable','string','max:255'],
             'cliente_telefono'  => ['nullable','string','max:50'],
+            'lat'               => ['nullable','numeric'],
+            'lng'               => ['nullable','numeric'],
 
             'productos'               => ['required','array','min:1'],
             'productos.*.id'          => ['required','exists:products,id'],
@@ -71,6 +93,8 @@ class OrderController extends Controller
                 'estado'            => 'capturado',
                 'direccion_entrega' => $data['direccion_entrega'],
                 'costo_envio'       => $data['costo_envio'] ?? 0,
+                'lat'               => $data['lat'] ?? null,
+                'lng'               => $data['lng'] ?? null,
             ]);
 
             foreach ($data['productos'] as $p) {

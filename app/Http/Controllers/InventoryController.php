@@ -29,6 +29,13 @@ class InventoryController extends Controller
 
     public function store(Request $r)
     {
+        // Filtrar almacenes vacíos antes de validar
+        $almacenes = $r->input('almacenes', []);
+        $almacenesFiltrados = array_filter($almacenes, function($alm) {
+            return !empty($alm['warehouse_id']) && !empty($alm['cantidad']);
+        });
+        $r->merge(['almacenes' => array_values($almacenesFiltrados)]);
+
         $data = $r->validate([
             'descripcion'      => ['required','string','max:255'],
             'costo_unitario'   => ['required','numeric','min:0'],
@@ -36,8 +43,8 @@ class InventoryController extends Controller
             'precio_mayoreo'   => ['nullable','numeric','min:0'],
             'price_tier'       => ['nullable','in:menudeo,mayoreo'],
             'almacenes'        => ['nullable','array'],
-            'almacenes.*.warehouse_id' => ['required','exists:warehouses,id'],
-            'almacenes.*.cantidad'     => ['required','integer','min:0'],
+            'almacenes.*.warehouse_id' => ['required_with:almacenes','exists:warehouses,id'],
+            'almacenes.*.cantidad'     => ['required_with:almacenes','integer','min:1'],
         ]);
 
         DB::transaction(function () use ($data) {
@@ -75,6 +82,11 @@ class InventoryController extends Controller
             }
         });
 
+        $crearOtro = $r->input('crear_otro', false);
+        if ($crearOtro) {
+            return redirect()->route('inventario.create')->with('ok', 'Producto agregado correctamente. Puedes crear otro producto.');
+        }
+
         return redirect()->route('inventario.index')->with('ok', 'Producto agregado correctamente.');
     }
 
@@ -110,22 +122,77 @@ class InventoryController extends Controller
         return back()->with('ok','Producto eliminado.');
     }
 
-    /* ========= Alta de Bodegas desde la UI ========= */
+    /* ========= Gestión de Bodegas ========= */
+
+    public function indexWarehouses()
+    {
+        $bodegas = Warehouse::orderBy('nombre')->get();
+        return view('inventario.warehouses.index', compact('bodegas'));
+    }
 
     public function createWarehouse()
     {
-        return view('inventario.warehouse_create');
+        $mapsKey = config('services.google.maps_key');
+        return view('inventario.warehouses.create', compact('mapsKey'));
     }
 
     public function storeWarehouse(Request $r)
     {
         $data = $r->validate([
             'nombre'    => ['required','string','max:100'],
-            'direccion' => ['nullable','string','max:255'],
+            'direccion' => ['required','string','max:255'],
+            'lat'       => ['required','numeric'],
+            'lng'       => ['required','numeric'],
+        ], [
+            'direccion.required' => 'La dirección de la bodega es obligatoria.',
+            'lat.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida del autocompletado.',
+            'lng.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida del autocompletado.',
         ]);
 
         Warehouse::create($data);
-        return redirect()->route('inventario.index')->with('ok','Bodega creada.');
+        
+        $crearOtro = $r->input('crear_otro', false);
+        if ($crearOtro) {
+            return redirect()->route('inventario.warehouses.create')->with('ok','Bodega creada con coordenadas. Puedes crear otra bodega.');
+        }
+        
+        return redirect()->route('inventario.warehouses.index')->with('ok','Bodega creada con coordenadas.');
+    }
+
+    public function editWarehouse(Warehouse $warehouse)
+    {
+        $mapsKey = config('services.google.maps_key');
+        return view('inventario.warehouses.edit', compact('warehouse', 'mapsKey'));
+    }
+
+    public function updateWarehouse(Request $r, Warehouse $warehouse)
+    {
+        $data = $r->validate([
+            'nombre'    => ['required','string','max:100'],
+            'direccion' => ['required','string','max:255'],
+            'lat'       => ['required','numeric'],
+            'lng'       => ['required','numeric'],
+        ], [
+            'direccion.required' => 'La dirección de la bodega es obligatoria.',
+            'lat.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida del autocompletado.',
+            'lng.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida del autocompletado.',
+        ]);
+
+        $warehouse->update($data);
+        return redirect()->route('inventario.warehouses.index')->with('ok','Bodega actualizada.');
+    }
+
+    public function destroyWarehouse(Warehouse $warehouse)
+    {
+        // Verificar si la bodega tiene productos asignados
+        $productosCount = $warehouse->warehouseProducts()->count();
+        
+        if ($productosCount > 0) {
+            return back()->with('error', "No se puede eliminar la bodega. Tiene {$productosCount} producto(s) asignado(s).");
+        }
+
+        $warehouse->delete();
+        return redirect()->route('inventario.warehouses.index')->with('ok','Bodega eliminada.');
     }
 
     /* ========= Alta de Stock desde la UI (opcional) ========= */

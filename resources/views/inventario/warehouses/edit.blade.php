@@ -1,5 +1,5 @@
 @extends('layouts.erp')
-@section('title','Nueva bodega')
+@section('title','Editar bodega')
 
 @section('content')
 <x-flash />
@@ -7,32 +7,42 @@
 <div class="container" style="max-width: 820px;">
   <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="fw-bold mb-0">
-      <i class="bi bi-building-add me-2"></i>Nueva bodega
+      <i class="bi bi-pencil-square me-2"></i>Editar bodega: {{ $warehouse->nombre }}
     </h3>
-      <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">
-        <i class="bi bi-arrow-left"></i> Volver
-      </a>
+    <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
   </div>
 
   <div class="card border-0 shadow-sm" style="border-radius:16px;">
     <div class="card-body">
-      <form method="POST" action="{{ route('inventario.warehouses.store') }}" class="row g-3">
-        @csrf
+      <form method="POST" action="{{ route('inventario.warehouses.update', $warehouse) }}" class="row g-3">
+        @csrf @method('PUT')
 
         <div class="col-md-6">
           <label class="form-label">Nombre de la bodega</label>
-          <input name="nombre" class="form-control" required placeholder="Bodega Centro">
+          <input name="nombre" class="form-control" required 
+                 value="{{ old('nombre', $warehouse->nombre) }}" 
+                 placeholder="Bodega Centro">
         </div>
 
         <div class="col-12">
           <label class="form-label">Dirección de la bodega <span class="text-danger">*</span></label>
           <input name="direccion" id="direccion_bodega" class="form-control" required
+                 value="{{ old('direccion', $warehouse->direccion) }}"
                  placeholder="Escribe la dirección y selecciona una opción del autocompletado">
-          <input type="hidden" name="lat" id="bodega_lat" required>
-          <input type="hidden" name="lng" id="bodega_lng" required>
-          <div id="bodega_validation_info" class="mt-2"></div>
+          <input type="hidden" name="lat" id="bodega_lat" required value="{{ old('lat', $warehouse->lat) }}">
+          <input type="hidden" name="lng" id="bodega_lng" required value="{{ old('lng', $warehouse->lng) }}">
+          <div id="bodega_validation_info" class="mt-2">
+            @if($warehouse->lat && $warehouse->lng)
+              <div class="alert alert-success py-2 mb-0">
+                <i class="bi bi-check-circle"></i> 
+                <small>Coordenadas actuales: {{ number_format($warehouse->lat, 6) }}, {{ number_format($warehouse->lng, 6) }}</small>
+              </div>
+            @endif
+          </div>
           <small class="text-secondary">
-            <i class="bi bi-info-circle"></i> <strong>Importante:</strong> Escribe y selecciona una dirección del autocompletado para capturar automáticamente las coordenadas. Esto es necesario para calcular rutas de entrega.
+            <i class="bi bi-info-circle"></i> <strong>Importante:</strong> Escribe y selecciona una dirección del autocompletado para actualizar las coordenadas. Esto es necesario para calcular rutas de entrega.
           </small>
         </div>
 
@@ -44,9 +54,9 @@
         </div>
 
         <div class="col-12 d-flex justify-content-end gap-2">
-          <a href="{{ route('inventario.index') }}" class="btn btn-light">Cancelar</a>
+          <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">Cancelar</a>
           <button type="submit" class="btn btn-primary" id="btnGuardarBodega">
-            <i class="bi bi-check2-circle"></i> Guardar
+            <i class="bi bi-check2-circle"></i> Guardar cambios
           </button>
         </div>
       </form>
@@ -69,6 +79,8 @@
 @endif
 <script>
   const mapsKey = @json($mapsKey ?? null);
+  const currentLat = {{ $warehouse->lat ?? 'null' }};
+  const currentLng = {{ $warehouse->lng ?? 'null' }};
   
   @if($mapsKey)
   function initWarehouseAutocompleteCallback() {
@@ -117,7 +129,7 @@
         validationInfo.innerHTML = `
           <div class="alert alert-success py-2 mb-0">
             <i class="bi bi-check-circle"></i> 
-            <small>Coordenadas capturadas correctamente: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
+            <small>Coordenadas actualizadas: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small>
           </div>
         `;
       }
@@ -167,7 +179,7 @@
       validationInfo.innerHTML = `
         <div class="alert alert-warning py-2 mb-0">
           <i class="bi bi-exclamation-triangle"></i> 
-          <small>Configure GOOGLE_MAPS_API_KEY para habilitar autocompletado de direcciones. Sin esto, deberás ingresar las coordenadas manualmente.</small>
+          <small>Configure GOOGLE_MAPS_API_KEY para habilitar autocompletado de direcciones.</small>
         </div>
       `;
     }
@@ -178,7 +190,6 @@
   document.querySelector('form').addEventListener('submit', function(e) {
     const lat = document.getElementById('bodega_lat').value;
     const lng = document.getElementById('bodega_lng').value;
-    const direccion = document.getElementById('direccion_bodega').value;
     
     if (!lat || !lng) {
       e.preventDefault();
@@ -190,3 +201,4 @@
   });
 </script>
 @endpush
+
