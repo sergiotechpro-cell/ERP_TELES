@@ -53,20 +53,10 @@
           </div>
 
           <div class="mt-3">
-            <label class="form-label">Cliente (opcional)</label>
-            <select name="customer_id" class="form-select">
-              <option value="">Público en general</option>
-              @foreach($clientes as $c)
-                <option value="{{ $c->id }}">{{ $c->nombre }}</option>
-              @endforeach
-            </select>
-          </div>
-
-          <div class="mt-3">
-            <label class="form-label">Forma de pago</label>
+            <label class="form-label">Forma de pago <span class="text-danger">*</span></label>
             <select name="forma_pago" class="form-select" required>
+              <option value="">Selecciona...</option>
               <option value="efectivo">Efectivo</option>
-              <option value="tarjeta">Tarjeta</option>
               <option value="transferencia">Transferencia</option>
             </select>
           </div>
@@ -101,7 +91,6 @@
           <thead class="table-light">
             <tr>
               <th>#</th>
-              <th>Cliente</th>
               <th>Forma de pago</th>
               <th>Status</th>
               <th>Total</th>
@@ -112,7 +101,6 @@
             @foreach($ventas as $v)
               <tr>
                 <td>{{ $v->id }}</td>
-                <td>{{ $v->customer->nombre ?? 'Público en general' }}</td>
                 <td class="text-capitalize">{{ $v->forma_pago }}</td>
                 <td>
                   <span class="badge rounded-pill 

@@ -253,13 +253,6 @@
             </div>
 
             <div class="nav-item">
-                <a class="nav-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}" href="{{ route('clientes.index') }}">
-                    <i class="bi bi-people"></i> 
-                    <span>Clientes</span>
-                </a>
-            </div>
-
-            <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('pedidos.*') ? 'active' : '' }}" href="{{ route('pedidos.index') }}">
                     <i class="bi bi-cart-check"></i> 
                     <span>Pedidos</span>
@@ -270,13 +263,6 @@
                 <a class="nav-link {{ request()->routeIs('inventario.*') ? 'active' : '' }}" href="{{ route('inventario.index') }}">
                     <i class="bi bi-boxes"></i> 
                     <span>Inventario</span>
-                </a>
-            </div>
-
-            <div class="nav-item">
-                <a class="nav-link {{ request()->routeIs('traspasos.*') ? 'active' : '' }}" href="{{ route('traspasos.index') }}">
-                    <i class="bi bi-arrow-left-right"></i> 
-                    <span>Traspasos</span>
                 </a>
             </div>
 
@@ -302,9 +288,9 @@
             </div>
 
             <div class="nav-item">
-                <a class="nav-link {{ request()->routeIs('garantias.*') ? 'active' : '' }}" href="{{ route('garantias.index') }}">
-                    <i class="bi bi-shield-check"></i> 
-                    <span>Garantías</span>
+                <a class="nav-link {{ request()->routeIs('rutas.*') || request()->routeIs('pedidos.ruta') ? 'active' : '' }}" href="{{ route('rutas.index') }}">
+                    <i class="bi bi-map"></i> 
+                    <span>Rutas y Entregas</span>
                 </a>
             </div>
 

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -14,16 +13,12 @@ class PosController extends Controller
 {
     public function index()
 {
-    // Productos y clientes para el POS
+    // Productos para el POS
     $productos = \App\Models\Product::orderBy('descripcion')
         ->get(['id','descripcion','precio_venta','precio_mayoreo','costo_unitario','price_tier']);
 
-    $clientes  = \App\Models\Customer::orderBy('nombre')
-        ->get(['id','nombre']);
-
-    // Ventas recientes (últimas 15 con cliente)
-    $ventas = \App\Models\Sale::with('customer')
-        ->latest()
+    // Ventas recientes (últimas 15)
+    $ventas = \App\Models\Sale::latest()
         ->paginate(15);
 
     // (Opcional) KPIs rápidos
@@ -31,15 +26,14 @@ class PosController extends Controller
     $totalesHoy = \App\Models\Sale::whereDate('created_at', $hoy)->sum('total');
     $conteoHoy  = \App\Models\Sale::whereDate('created_at', $hoy)->count();
 
-    return view('pos.index', compact('productos','clientes','ventas','totalesHoy','conteoHoy'));
+    return view('pos.index', compact('productos','ventas','totalesHoy','conteoHoy'));
 }
 
 
     public function store(Request $r)
 {
     $data = $r->validate([
-        'customer_id'              => ['nullable','integer','exists:customers,id'],
-        'forma_pago'               => ['required','in:efectivo,tarjeta,transferencia'],
+        'forma_pago'               => ['required','in:efectivo,transferencia'],
         'subtotal'                 => ['required','numeric','min:0'],
         'items'                    => ['required','array','min:1'],
         'items.*.product_id'       => ['required','integer','exists:products,id'],
@@ -49,7 +43,7 @@ class PosController extends Controller
 
     DB::transaction(function() use ($data, &$saleId) {
         $sale = Sale::create([
-            'customer_id' => $data['customer_id'] ?? null,
+            'customer_id' => null,
             'user_id'     => Auth::id(),
             'subtotal'    => $data['subtotal'],
             'total'       => $data['subtotal'],   // sin impuestos por ahora

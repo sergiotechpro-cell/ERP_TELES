@@ -16,10 +16,8 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center">
             <div>
-              <div class="text-secondary">Cliente</div>
-              <div class="fw-bold">{{ $pedido->customer->nombre ?? '—' }}</div>
-              <div class="text-secondary mt-2">Dirección</div>
-              <div class="fw-medium">{{ $pedido->direccion_entrega }}</div>
+              <div class="text-secondary">Dirección de entrega</div>
+              <div class="fw-medium">{{ $pedido->direccion_entrega ?? '—' }}</div>
             </div>
             <div>
               <x-status-badge :status="$pedido->estado"/>

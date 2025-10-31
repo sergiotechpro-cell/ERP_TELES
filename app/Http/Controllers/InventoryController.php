@@ -35,8 +35,9 @@ class InventoryController extends Controller
             'precio_venta'     => ['required','numeric','min:0'],
             'precio_mayoreo'   => ['nullable','numeric','min:0'],
             'price_tier'       => ['nullable','in:menudeo,mayoreo'],
-            'bodega_id'        => ['nullable','exists:warehouses,id'],
-            'cantidad'         => ['nullable','integer','min:0'],
+            'almacenes'        => ['nullable','array'],
+            'almacenes.*.warehouse_id' => ['required','exists:warehouses,id'],
+            'almacenes.*.cantidad'     => ['required','integer','min:0'],
         ]);
 
         DB::transaction(function () use ($data) {
@@ -49,23 +50,27 @@ class InventoryController extends Controller
                 'price_tier'      => $data['price_tier'] ?? 'menudeo',
             ]);
 
-            // Stock inicial (opcional)
-            $cantidad = (int)($data['cantidad'] ?? 0);
-            $bodegaId = $data['bodega_id'] ?? null;
+            // Stock inicial en múltiples almacenes
+            if (!empty($data['almacenes'])) {
+                foreach ($data['almacenes'] as $almacen) {
+                    $bodegaId = $almacen['warehouse_id'];
+                    $cantidad = (int)($almacen['cantidad'] ?? 0);
 
-            if ($bodegaId && $cantidad > 0) {
-                $wp = WarehouseProduct::firstOrCreate(
-                    ['warehouse_id' => $bodegaId, 'product_id' => $producto->id],
-                    ['stock' => 0]
-                );
-                $wp->increment('stock', $cantidad);
+                    if ($bodegaId && $cantidad > 0) {
+                        $wp = WarehouseProduct::firstOrCreate(
+                            ['warehouse_id' => $bodegaId, 'product_id' => $producto->id],
+                            ['stock' => 0]
+                        );
+                        $wp->increment('stock', $cantidad);
 
-                // Crear números de serie automáticos
-                for ($i=0; $i<$cantidad; $i++) {
-                    SerialNumber::create([
-                        'warehouse_product_id' => $wp->id,
-                        'numero_serie'         => strtoupper(uniqid('SN-')),
-                    ]);
+                        // Crear números de serie automáticos
+                        for ($i=0; $i<$cantidad; $i++) {
+                            SerialNumber::create([
+                                'warehouse_product_id' => $wp->id,
+                                'numero_serie'         => strtoupper(uniqid('SN-')),
+                            ]);
+                        }
+                    }
                 }
             }
         });
@@ -157,9 +162,63 @@ class InventoryController extends Controller
                         'numero_serie'         => strtoupper($sn),
                     ]);
                 }
+            } else {
+                // Si no hay seriales, crear automáticamente
+                for ($i = 0; $i < (int)$data['cantidad']; $i++) {
+                    SerialNumber::create([
+                        'warehouse_product_id' => $wp->id,
+                        'numero_serie'         => strtoupper(uniqid('SN-')),
+                    ]);
+                }
             }
         });
 
         return redirect()->route('inventario.index')->with('ok','Stock agregado.');
+    }
+
+    /* ========= Agregar unidades a producto existente ========= */
+    
+    public function addStock(Product $inventario)
+    {
+        $bodegas = Warehouse::orderBy('nombre')->get();
+        return view('inventario.add_stock', compact('inventario', 'bodegas'));
+    }
+
+    public function storeAddStock(Request $r, Product $inventario)
+    {
+        $data = $r->validate([
+            'warehouse_id' => ['required','exists:warehouses,id'],
+            'cantidad'     => ['required','integer','min:1'],
+            'seriales'     => ['nullable','string'],
+        ]);
+
+        DB::transaction(function () use ($data, $inventario) {
+            $wp = WarehouseProduct::firstOrCreate(
+                ['warehouse_id' => $data['warehouse_id'], 'product_id' => $inventario->id],
+                ['stock' => 0]
+            );
+            $wp->increment('stock', (int)$data['cantidad']);
+
+            // series (uno por línea, si se enviaron)
+            if (!empty($data['seriales'])) {
+                $lines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $data['seriales']))));
+                foreach ($lines as $sn) {
+                    SerialNumber::create([
+                        'warehouse_product_id' => $wp->id,
+                        'numero_serie'         => strtoupper($sn),
+                    ]);
+                }
+            } else {
+                // Si no hay seriales, crear automáticamente
+                for ($i = 0; $i < (int)$data['cantidad']; $i++) {
+                    SerialNumber::create([
+                        'warehouse_product_id' => $wp->id,
+                        'numero_serie'         => strtoupper(uniqid('SN-')),
+                    ]);
+                }
+            }
+        });
+
+        return redirect()->route('inventario.show', $inventario)->with('ok','Unidades agregadas al producto.');
     }
 }

@@ -33,8 +33,7 @@
           <thead class="table-light">
             <tr>
               <th style="width:70px">#</th>
-              <th>Cliente</th>
-              <th>Dirección</th>
+              <th>Dirección de entrega</th>
               <th style="width:140px">Estado</th>
               <th style="width:170px">Creado</th>
               <th class="text-end" style="width:220px">Acciones</th>
@@ -44,7 +43,6 @@
             @foreach($pedidos as $o)
               <tr>
                 <td class="fw-semibold">#{{ $o->id }}</td>
-                <td>{{ $o->customer->nombre ?? '—' }}</td>
                 <td class="text-truncate" style="max-width: 340px">
                   {{ $o->direccion_entrega ?: '—' }}
                 </td>

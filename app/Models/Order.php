@@ -29,4 +29,8 @@ class Order extends Model
     public function assignment() {
         return $this->hasOne(DeliveryAssignment::class);
     }
+
+    public function routePlan() {
+        return $this->hasOne(RoutePlan::class);
+    }
 }

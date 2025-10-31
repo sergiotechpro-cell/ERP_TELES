@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\Customer;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,14 +14,13 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $pedidos = Order::with('customer')->latest()->paginate(10);
+        $pedidos = Order::latest()->paginate(10);
         return view('pedidos.index', compact('pedidos'));
     }
 
     public function create()
     {
         // Datos base para selects
-        $clientes  = Customer::orderBy('nombre')->get(['id','nombre','email','telefono']);
         $productos = Product::orderBy('descripcion')->get([
             'id','descripcion','precio_venta','costo_unitario','price_tier','precio_mayoreo'
         ]);
@@ -46,16 +44,17 @@ class OrderController extends Controller
             return ['id' => $b->id, 'nombre' => $b->nombre];
         })->values();
 
-        return view('pedidos.create', compact('clientes','productos','bodegas','prodRows','bodRows'));
+        return view('pedidos.create', compact('productos','bodegas','prodRows','bodRows'));
     }
 
     public function store(Request $r)
     {
         // Validación del payload del formulario
         $data = $r->validate([
-            'cliente_id'        => ['required','exists:customers,id'],
             'direccion_entrega' => ['required','string','max:255'],
             'costo_envio'       => ['nullable','numeric','min:0'],
+            'cliente_nombre'    => ['nullable','string','max:255'],
+            'cliente_telefono'  => ['nullable','string','max:50'],
 
             'productos'               => ['required','array','min:1'],
             'productos.*.id'          => ['required','exists:products,id'],
@@ -67,7 +66,7 @@ class OrderController extends Controller
 
         DB::transaction(function () use ($data) {
             $pedido = Order::create([
-                'customer_id'       => $data['cliente_id'],
+                'customer_id'       => null,
                 'created_by'        => Auth::id(),
                 'estado'            => 'capturado',
                 'direccion_entrega' => $data['direccion_entrega'],
@@ -91,7 +90,7 @@ class OrderController extends Controller
 
     public function show(Order $pedido)
     {
-        $pedido->load(['items.product','customer']);
+        $pedido->load(['items.product', 'items.warehouse']);
         return view('pedidos.show', compact('pedido'));
     }
 

@@ -28,19 +28,17 @@
 
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label">Cliente</label>
-            <select name="cliente_id" class="form-select" required>
-              <option value="">Selecciona...</option>
-              @foreach($clientes as $c)
-                <option value="{{ $c->id }}">
-                  {{ $c->nombre }} @if($c->email) ({{ $c->email }}) @endif
-                </option>
-              @endforeach
-            </select>
+            <label class="form-label">Nombre de contacto (opcional)</label>
+            <input name="cliente_nombre" class="form-control" placeholder="Nombre del cliente">
           </div>
 
           <div class="col-md-6">
-            <label class="form-label">Dirección de entrega</label>
+            <label class="form-label">Teléfono (opcional)</label>
+            <input name="cliente_telefono" type="tel" class="form-control" placeholder="Teléfono de contacto">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Dirección de entrega <span class="text-danger">*</span></label>
             <input name="direccion_entrega" class="form-control" required placeholder="Calle, número, colonia, ciudad">
           </div>
 

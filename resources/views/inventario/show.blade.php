@@ -7,7 +7,12 @@
 <div class="container-fluid">
   <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="fw-bold mb-0"><i class="bi bi-box-seam me-2"></i> {{ $producto->descripcion }}</h3>
-    <a href="{{ route('inventario.index') }}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Volver</a>
+    <div class="d-flex gap-2">
+      <a href="{{ route('inventario.add-stock', $producto) }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Agregar Unidades
+      </a>
+      <a href="{{ route('inventario.index') }}" class="btn btn-light"><i class="bi bi-arrow-left"></i> Volver</a>
+    </div>
   </div>
 
   <div class="row g-3">

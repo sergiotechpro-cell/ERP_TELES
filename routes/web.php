@@ -7,13 +7,10 @@ use App\Http\Controllers\{
     OrderController,
     DeliveryController,
     FinanceController,
-    CustomerController,
     EmployeeController,
-    TransferController,
     ScheduleController,
     RouteController,
     PosController,
-    WarrantyController,
     RoleController
 };
 
@@ -50,6 +47,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('inventario.stock.create');
     Route::post('/inventario/stock', [InventoryController::class, 'storeStock'])
         ->name('inventario.stock.store');
+    
+    // Agregar unidades a producto existente
+    Route::get('/inventario/{inventario}/agregar-stock', [InventoryController::class, 'addStock'])
+        ->name('inventario.add-stock');
+    Route::post('/inventario/{inventario}/agregar-stock', [InventoryController::class, 'storeAddStock'])
+        ->name('inventario.store-add-stock');
 
     // ================== PEDIDOS ==================
     Route::resource('pedidos', OrderController::class);
@@ -62,15 +65,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/calendario', [ScheduleController::class, 'index'])->name('calendario.index');
     Route::post('/calendario', [ScheduleController::class, 'store'])->name('calendario.store');
 
-    // Rutas (Google Maps) para un pedido
-    Route::get('/pedidos/{pedido}/ruta', [RouteController::class, 'compute'])->name('pedidos.ruta');
-
-    // ================== TRASPASOS ==================
-    Route::get('/traspasos', [TransferController::class, 'index'])->name('traspasos.index');
-    Route::get('/traspasos/nuevo', [TransferController::class, 'create'])->name('traspasos.create');
-    Route::post('/traspasos', [TransferController::class, 'store'])->name('traspasos.store');
-    Route::post('/traspasos/{traspaso}/recibir', [TransferController::class, 'receive'])->name('traspasos.receive');
-
     // ================== FINANZAS ==================
     Route::get('/finanzas', [FinanceController::class, 'index'])->name('finanzas.index');
     Route::get('/finanzas/cierre-diario', [FinanceController::class, 'showDaily'])->name('finanzas.cierre-diario');
@@ -79,9 +73,6 @@ Route::middleware(['auth'])->group(function () {
     // Route::get('/finanzas/cierre-semanal', [FinanceController::class,'showWeekly'])->name('finanzas.cierre-semanal');
     // Route::post('/finanzas/cierre-semanal', [FinanceController::class,'weeklyClose'])->name('finanzas.weeklyClose');
 
-    // ================== CLIENTES ==================
-    Route::resource('clientes', CustomerController::class);
-
     // ================== EMPLEADOS ==================
     Route::resource('empleados', EmployeeController::class);
 
@@ -89,10 +80,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
 
-    // ================== GARANTÍAS ==================
-    Route::get('/garantias', [WarrantyController::class, 'index'])->name('garantias.index');
-    Route::get('/garantias/nueva', [WarrantyController::class, 'create'])->name('garantias.create');
-    Route::post('/garantias', [WarrantyController::class, 'store'])->name('garantias.store');
+    // ================== RUTAS Y ENTREGAS ==================
+    Route::get('/rutas', [RouteController::class, 'index'])->name('rutas.index');
+    Route::get('/pedidos/{pedido}/ruta', [RouteController::class, 'compute'])->name('pedidos.ruta');
 
     // ================== ROLES / PERMISOS ==================
     Route::get('/roles/seed', [RoleController::class, 'seed'])->name('roles.seed');

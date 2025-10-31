@@ -32,7 +32,8 @@ return [
     ],
 
     'google' => [
-            'routes_key' => env('GOOGLE_ROUTES_API_KEY'),
+        'maps_key' => env('GOOGLE_MAPS_API_KEY', env('GOOGLE_ROUTES_API_KEY')),
+        'routes_key' => env('GOOGLE_ROUTES_API_KEY'),
     ],
 
 
