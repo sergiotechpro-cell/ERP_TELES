@@ -267,6 +267,13 @@
             </div>
 
             <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}" href="{{ route('clientes.index') }}">
+                    <i class="bi bi-people"></i> 
+                    <span>Clientes</span>
+                </a>
+            </div>
+
+            <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('calendario.*') ? 'active' : '' }}" href="{{ route('calendario.index') }}">
                     <i class="bi bi-calendar3"></i> 
                     <span>Calendario</span>

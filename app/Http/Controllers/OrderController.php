@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Models\ChecklistItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $pedidos = Order::latest()->paginate(10);
+        $pedidos = Order::with('assignment.courier')->latest()->paginate(10);
         return view('pedidos.index', compact('pedidos'));
     }
 
@@ -98,6 +99,8 @@ class OrderController extends Controller
             ]);
 
             foreach ($data['productos'] as $p) {
+                $prod = Product::find($p['id']);
+                
                 OrderItem::create([
                     'order_id'        => $pedido->id,
                     'product_id'      => $p['id'],
@@ -105,6 +108,13 @@ class OrderController extends Controller
                     'cantidad'        => (int) $p['cantidad'],
                     'precio_unitario' => (float) $p['precio'],
                     'costo_unitario'  => (float) ($p['costo'] ?? 0),
+                ]);
+                
+                // Crear checklist automático por producto
+                ChecklistItem::create([
+                    'order_id'    => $pedido->id,
+                    'texto'       => 'Verificar ' . ($prod->descripcion ?? 'producto'),
+                    'completado'  => false,
                 ]);
             }
         });
@@ -114,14 +124,29 @@ class OrderController extends Controller
 
     public function show(Order $pedido)
     {
-        $pedido->load(['items.product', 'items.warehouse']);
-        return view('pedidos.show', compact('pedido'));
+        $pedido->load(['items.product', 'items.warehouse', 'checklistItems', 'payments', 'assignment.courier']);
+        
+        // Empleados disponibles para asignar
+        $empleados = \App\Models\User::orderBy('name')->get(['id', 'name', 'email']);
+        
+        return view('pedidos.show', compact('pedido', 'empleados'));
     }
 
     public function update(Request $r, Order $pedido)
     {
         $pedido->update($r->only(['estado']));
         return back()->with('ok', 'Estado de pedido actualizado.');
+    }
+
+    public function toggleChecklist(Request $r, Order $pedido, ChecklistItem $item)
+    {
+        $item->update([
+            'completado' => !$item->completado,
+            'completed_at' => !$item->completado ? now() : null,
+            'completed_by' => !$item->completado ? Auth::id() : null,
+        ]);
+        
+        return back()->with('ok', 'Checklist actualizado.');
     }
 
     public function destroy(Order $pedido)

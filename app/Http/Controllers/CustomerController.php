@@ -20,12 +20,28 @@ class CustomerController extends Controller
 
     public function store(Request $r)
     {
-        Customer::create($r->only(['nombre','es_empresa','telefono','direccion_entrega','email']));
+        $data = $r->validate([
+            'nombre' => ['required', 'string', 'max:255'],
+            'es_empresa' => ['nullable', 'boolean'],
+            'telefono' => ['nullable', 'string', 'max:50'],
+            'direccion_entrega' => ['nullable', 'string', 'max:500'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+        
+        Customer::create($data);
         return redirect()->route('clientes.index')->with('ok','Cliente agregado.');
     }
 
     public function show(Customer $cliente)
     {
+        $cliente->load([
+            'orders' => function($q) {
+                $q->latest()->limit(10)->with('items');
+            },
+            'sales' => function($q) {
+                $q->latest()->limit(10);
+            }
+        ]);
         return view('clientes.show', compact('cliente'));
     }
 
@@ -36,7 +52,15 @@ class CustomerController extends Controller
 
     public function update(Request $r, Customer $cliente)
     {
-        $cliente->update($r->only(['nombre','es_empresa','telefono','direccion_entrega','email']));
+        $data = $r->validate([
+            'nombre' => ['required', 'string', 'max:255'],
+            'es_empresa' => ['nullable', 'boolean'],
+            'telefono' => ['nullable', 'string', 'max:50'],
+            'direccion_entrega' => ['nullable', 'string', 'max:500'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+        
+        $cliente->update($data);
         return redirect()->route('clientes.index')->with('ok','Cliente actualizado.');
     }
 

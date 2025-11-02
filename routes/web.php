@@ -11,7 +11,8 @@ use App\Http\Controllers\{
     ScheduleController,
     RouteController,
     PosController,
-    RoleController
+    RoleController,
+    CustomerController
 };
 
 /*
@@ -67,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
 
     // ================== PEDIDOS ==================
     Route::resource('pedidos', OrderController::class);
+    Route::post('/pedidos/{pedido}/checklist/{item}', [OrderController::class, 'toggleChecklist'])->name('pedidos.checklist.toggle');
 
     // Logística (asignación y escaneo)
     Route::post('/logistica/asignar', [DeliveryController::class, 'assign'])->name('logistica.assign');
@@ -87,9 +89,14 @@ Route::middleware(['auth'])->group(function () {
     // ================== EMPLEADOS ==================
     Route::resource('empleados', EmployeeController::class);
 
+    // ================== CLIENTES ==================
+    Route::resource('clientes', CustomerController::class);
+
     // ================== POS ==================
     Route::get('/pos', [PosController::class, 'index'])->name('pos.index');
     Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
+    Route::get('/pos/{pos}', [PosController::class, 'show'])->name('pos.show');
+    Route::delete('/pos/{pos}', [PosController::class, 'destroy'])->name('pos.destroy');
 
     // ================== RUTAS Y ENTREGAS ==================
     Route::get('/rutas', [RouteController::class, 'index'])->name('rutas.index');

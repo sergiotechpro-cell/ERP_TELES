@@ -9,8 +9,14 @@ class SaleItem extends Model
         'product_id',
         'cantidad',
         'precio_unitario',
-        'costo_unitario', // <-- asegúrate de tenerlo
+        'costo_unitario',
     ];
 
-    // relaciones...
+    public function sale() {
+        return $this->belongsTo(Sale::class);
+    }
+    
+    public function product() {
+        return $this->belongsTo(Product::class);
+    }
 }

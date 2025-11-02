@@ -79,15 +79,54 @@ class FinanceController extends Controller
         $chartUtil   = $months->map(fn($k) => $util[$k] ?? 0.0);
 
         // ======== PAGOS Y VENTAS RECIENTES ========
-        $pagos = Payment::with('order')->latest()->paginate(10);
+        $pagos = Payment::with(['order', 'sale'])->latest()->paginate(20);
         $pagosUltimos7 = Payment::where('created_at','>=',now()->subDays(7))->count();
         $ventasPosRecientes = Sale::latest()->limit(5)->get();
+        
+        // Totales de pagos (últimos 7 días y hoy)
+        $totalPagosHoy = Payment::whereDate('created_at', now()->toDateString())->sum('monto');
+        $totalPagos7Dias = Payment::where('created_at','>=',now()->subDays(7))->sum('monto');
+        
+        // Totales por método de pago (hoy)
+        $totalEfectivoHoy = Payment::whereDate('created_at', now()->toDateString())
+            ->where('forma_pago', 'efectivo')
+            ->sum('monto');
+        
+        $totalTransferenciaHoy = Payment::whereDate('created_at', now()->toDateString())
+            ->where('forma_pago', 'transferencia')
+            ->sum('monto');
+        
+        // Totales por método de pago (últimos 7 días)
+        $totalEfectivo7Dias = Payment::where('created_at','>=',now()->subDays(7))
+            ->where('forma_pago', 'efectivo')
+            ->sum('monto');
+        
+        $totalTransferencia7Dias = Payment::where('created_at','>=',now()->subDays(7))
+            ->where('forma_pago', 'transferencia')
+            ->sum('monto');
+        
+        // Contar pagos por método (hoy)
+        $countEfectivoHoy = Payment::whereDate('created_at', now()->toDateString())
+            ->where('forma_pago', 'efectivo')
+            ->count();
+        
+        $countTransferenciaHoy = Payment::whereDate('created_at', now()->toDateString())
+            ->where('forma_pago', 'transferencia')
+            ->count();
 
         return view('finanzas.index', compact(
             'inventario',
             'utilidadProyectada',
             'pagos',
             'pagosUltimos7',
+            'totalPagosHoy',
+            'totalPagos7Dias',
+            'totalEfectivoHoy',
+            'totalTransferenciaHoy',
+            'totalEfectivo7Dias',
+            'totalTransferencia7Dias',
+            'countEfectivoHoy',
+            'countTransferenciaHoy',
             'chartLabels',
             'chartPOS',
             'chartPedidos',

@@ -24,9 +24,63 @@
             </div>
           </div>
           <hr>
-          <h6 class="text-secondary">Productos</h6>
+          
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="text-secondary mb-0"><i class="bi bi-list-check me-2"></i>Checklist de verificación</h6>
+            @php
+              $totalItems = $pedido->checklistItems->count();
+              $completados = $pedido->checklistItems->where('completado', true)->count();
+              $porcentaje = $totalItems > 0 ? ($completados / $totalItems) * 100 : 0;
+            @endphp
+            <small class="text-secondary">{{ $completados }}/{{ $totalItems }} completados</small>
+          </div>
+          
+          @if($pedido->checklistItems->count() > 0)
+            <div class="progress mb-3" style="height: 6px;">
+              <div class="progress-bar {{ $porcentaje == 100 ? 'bg-success' : 'bg-primary' }}" 
+                   role="progressbar" 
+                   style="width: {{ $porcentaje }}%"></div>
+            </div>
+            
+            <div class="list-group">
+              @foreach($pedido->checklistItems as $item)
+                <div class="list-group-item">
+                  <form action="{{ route('pedidos.checklist.toggle', [$pedido, $item]) }}" 
+                        method="POST" class="d-inline">
+                    @csrf
+                    <div class="form-check form-check-lg">
+                      <input class="form-check-input" 
+                             type="checkbox" 
+                             {{ $item->completado ? 'checked' : '' }}
+                             onchange="this.form.submit()">
+                      <label class="form-check-label {{ $item->completado ? 'text-decoration-line-through text-secondary' : '' }}">
+                        {{ $item->texto }}
+                      </label>
+                    </div>
+                  </form>
+                  @if($item->completado && $item->completed_at)
+                    <small class="text-secondary ms-4">
+                      <i class="bi bi-check-circle"></i> 
+                      Completado {{ $item->completed_at->format('d M Y H:i') }}
+                      @if($item->user)
+                        por {{ $item->user->name }}
+                      @endif
+                    </small>
+                  @endif
+                </div>
+              @endforeach
+            </div>
+          @else
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> No hay checklist disponible para este pedido.
+            </div>
+          @endif
+
+          <hr class="my-3">
+          
+          <h6 class="text-secondary mb-3">Productos</h6>
           <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle table-sm">
               <thead class="table-light">
                 <tr>
                   <th>Producto</th><th>Bodega</th><th>Cant.</th><th>Precio</th><th>Subtotal</th>
@@ -62,25 +116,157 @@
     </div>
 
     <div class="col-12 col-lg-5">
+      {{-- INFORMACIÓN DE PAGO --}}
+      @if($pedido->payments->count() > 0)
       <div class="card border-0 shadow-sm mb-3" style="border-radius:16px;">
         <div class="card-body">
-          <h6 class="mb-3"><i class="bi bi-truck me-2"></i>Asignar repartidor</h6>
-          <form method="POST" action="{{ route('logistica.assign') }}" class="row g-2">
+          <h6 class="mb-3"><i class="bi bi-cash-coin me-2"></i>Información de pago</h6>
+          @foreach($pedido->payments as $payment)
+            <div class="mb-3 pb-3 {{ !$loop->last ? 'border-bottom' : '' }}">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold">Monto a cobrar</div>
+                  <div class="display-6 fw-bold text-success">
+                    ${{ number_format($payment->monto, 2) }}
+                  </div>
+                </div>
+                <div>
+                  <span class="badge rounded-pill fs-6 
+                    @if($payment->estado==='depositado') text-bg-success
+                    @elseif($payment->estado==='en_caja') text-bg-info
+                    @else text-bg-warning
+                    @endif">
+                    {{ ucfirst($payment->estado ?? 'pendiente') }}
+                  </span>
+                </div>
+              </div>
+              <div class="row g-2 mt-2">
+                <div class="col-12">
+                  <div class="text-secondary small">Forma de pago</div>
+                  <div class="fw-medium text-capitalize">{{ $payment->forma_pago }}</div>
+                </div>
+                <div class="col-12">
+                  <div class="text-secondary small">Fecha de registro</div>
+                  <div class="fw-medium">{{ $payment->created_at->format('d M Y H:i') }}</div>
+                </div>
+                @if($payment->reportado_at)
+                <div class="col-12">
+                  <div class="text-secondary small">Reportado</div>
+                  <div class="fw-medium">{{ $payment->reportado_at->format('d M Y H:i') }}</div>
+                </div>
+                @endif
+              </div>
+            </div>
+          @endforeach
+        </div>
+      </div>
+      @endif
+
+      <div class="card border-0 shadow-sm mb-3" style="border-radius:16px;">
+        <div class="card-body">
+          <h6 class="mb-3"><i class="bi bi-truck me-2"></i>Asignar chofer</h6>
+          
+          {{-- Mostrar chofer asignado si existe --}}
+          @if($pedido->assignment)
+            <div class="alert alert-info mb-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="fw-semibold">Chofer asignado</div>
+                  <div class="mt-1">
+                    <i class="bi bi-person-circle"></i> 
+                    {{ $pedido->assignment->courier->name ?? '—' }}
+                  </div>
+                  <small class="text-secondary">
+                    Asignado: {{ $pedido->assignment->asignado_at?->format('d M Y H:i') }}
+                  </small>
+                </div>
+                <div>
+                  <span class="badge rounded-pill 
+                    @if($pedido->assignment->estado==='entregado') text-bg-success
+                    @elseif($pedido->assignment->estado==='en_ruta') text-bg-info
+                    @else text-bg-warning
+                    @endif">
+                    {{ ucfirst($pedido->assignment->estado ?? 'pendiente') }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          @endif
+          
+          {{-- Formulario para asignar chofer --}}
+          <form method="POST" action="{{ route('logistica.assign') }}" class="row g-2" id="assignForm">
             @csrf
             <input type="hidden" name="order_id" value="{{ $pedido->id }}">
             <div class="col-12">
-              <label class="form-label">Usuario (courier)</label>
-              <select name="courier_id" class="form-select" required>
+              <label class="form-label">Seleccionar chofer</label>
+              <select name="courier_id" class="form-select" {{ !$pedido->assignment ? 'required' : '' }}>
                 <option value="">Selecciona...</option>
-                @foreach(\App\Models\User::orderBy('name')->get() as $u)
-                  <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->email }})</option>
+                @foreach($empleados ?? [] as $e)
+                  <option value="{{ $e->id }}" {{ ($pedido->assignment && $pedido->assignment->courier_id == $e->id) ? 'selected' : '' }}>
+                    {{ $e->name }} ({{ $e->email }})
+                  </option>
                 @endforeach
               </select>
             </div>
             <div class="col-12 d-flex justify-content-end">
-              <button class="btn btn-primary"><i class="bi bi-check2"></i> Asignar</button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check2"></i> {{ $pedido->assignment ? 'Reasignar' : 'Asignar' }}
+              </button>
             </div>
           </form>
+          
+          <hr class="my-3">
+          
+          {{-- Programar entrega en calendario --}}
+          <div class="mt-3">
+            <h6 class="mb-3"><i class="bi bi-calendar-event me-2"></i>Programar entrega</h6>
+            <form method="POST" action="{{ route('calendario.store') }}" class="row g-2">
+              @csrf
+              <input type="hidden" name="order_id" value="{{ $pedido->id }}">
+              <div class="col-md-6">
+                <label class="form-label">Fecha de entrega</label>
+                <input type="date" name="fecha" class="form-select" required 
+                       min="{{ now()->toDateString() }}" 
+                       value="{{ old('fecha') }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Hora (opcional)</label>
+                <input type="time" name="hora" class="form-select" value="{{ old('hora', '09:00') }}">
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Chofer</label>
+                <select name="courier_id" class="form-select" required>
+                  <option value="">Selecciona...</option>
+                  @foreach($empleados ?? [] as $e)
+                    <option value="{{ $e->id }}" {{ ($pedido->assignment && $pedido->assignment->courier_id == $e->id) ? 'selected' : '' }}>
+                      {{ $e->name }}
+                    </option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Título (opcional)</label>
+                <input type="text" name="titulo" class="form-control" 
+                       placeholder="Ej: Entrega urgente" value="{{ old('titulo') }}">
+              </div>
+              <div class="col-12 d-flex justify-content-end">
+                <button type="submit" class="btn btn-success">
+                  <i class="bi bi-calendar-plus"></i> Programar en Calendario
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <script>
+            document.getElementById('assignForm').addEventListener('submit', function(e) {
+              const select = this.querySelector('select[name="courier_id"]');
+              if (!select.value) {
+                e.preventDefault();
+                alert('Por favor selecciona un chofer.');
+                return false;
+              }
+            });
+          </script>
         </div>
       </div>
 

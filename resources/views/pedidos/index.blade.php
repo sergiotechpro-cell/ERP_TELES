@@ -34,6 +34,7 @@
             <tr>
               <th style="width:70px">#</th>
               <th>Dirección de entrega</th>
+              <th style="width:140px">Chofer</th>
               <th style="width:140px">Estado</th>
               <th style="width:170px">Creado</th>
               <th class="text-end" style="width:220px">Acciones</th>
@@ -45,6 +46,19 @@
                 <td class="fw-semibold">#{{ $o->id }}</td>
                 <td class="text-truncate" style="max-width: 340px">
                   {{ $o->direccion_entrega ?: '—' }}
+                </td>
+                <td>
+                  @if($o->assignment && $o->assignment->courier)
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="bi bi-person-circle text-primary"></i>
+                      <span>{{ $o->assignment->courier->name }}</span>
+                    </div>
+                    <small class="text-secondary">
+                      {{ ucfirst($o->assignment->estado ?? 'sin estado') }}
+                    </small>
+                  @else
+                    <span class="text-secondary">Sin asignar</span>
+                  @endif
                 </td>
                 <td>
                   <x-status-badge :status="$o->estado" />

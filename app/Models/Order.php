@@ -33,4 +33,8 @@ class Order extends Model
     public function routePlan() {
         return $this->hasOne(RoutePlan::class);
     }
+
+    public function checklistItems() {
+        return $this->hasMany(ChecklistItem::class);
+    }
 }

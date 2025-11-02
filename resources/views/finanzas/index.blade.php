@@ -15,7 +15,7 @@
 
   {{-- KPI CARDS --}}
   <div class="row g-3 mb-3">
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
         <div class="card-body">
           <div class="small text-secondary">Costo total de inventario</div>
@@ -23,7 +23,7 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
       <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
         <div class="card-body">
           <div class="small text-secondary">Utilidad proyectada</div>
@@ -31,11 +31,49 @@
         </div>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px; border-left: 4px solid #10b981;">
         <div class="card-body">
-          <div class="small text-secondary">Pagos registrados (últimos 7 días)</div>
-          <div class="display-6 fw-bold">{{ $pagosUltimos7 ?? 0 }}</div>
+          <div class="small text-secondary">
+            <i class="bi bi-cash-stack text-success me-1"></i> Efectivo hoy
+          </div>
+          <div class="display-6 fw-bold text-success">${{ number_format($totalEfectivoHoy ?? 0, 2) }}</div>
+          <div class="small text-secondary mt-2">
+            {{ $countEfectivoHoy ?? 0 }} pago(s) · 7 días: ${{ number_format($totalEfectivo7Dias ?? 0, 2) }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px; border-left: 4px solid #3b82f6;">
+        <div class="card-body">
+          <div class="small text-secondary">
+            <i class="bi bi-bank text-primary me-1"></i> Transferencia hoy
+          </div>
+          <div class="display-6 fw-bold text-primary">${{ number_format($totalTransferenciaHoy ?? 0, 2) }}</div>
+          <div class="small text-secondary mt-2">
+            {{ $countTransferenciaHoy ?? 0 }} pago(s) · 7 días: ${{ number_format($totalTransferencia7Dias ?? 0, 2) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {{-- Total General --}}
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm" style="border-radius:16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="card-body text-white">
+          <div class="row align-items-center">
+            <div class="col-md-8">
+              <div class="small opacity-75">Total ingresos hoy</div>
+              <div class="display-5 fw-bold">${{ number_format($totalPagosHoy ?? 0, 2) }}</div>
+              <div class="small opacity-75 mt-2">Total últimos 7 días: ${{ number_format($totalPagos7Dias ?? 0, 2) }}</div>
+            </div>
+            <div class="col-md-4 text-end">
+              <div class="display-1 opacity-25">💰</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -66,9 +104,11 @@
                 <thead class="table-light">
                   <tr>
                     <th>#</th>
-                    <th>Pedido</th>
+                    <th>Tipo</th>
+                    <th>Referencia</th>
                     <th>Método</th>
                     <th>Monto</th>
+                    <th>Estado</th>
                     <th>Fecha</th>
                   </tr>
                 </thead>
@@ -76,9 +116,62 @@
                   @foreach($pagos as $p)
                     <tr>
                       <td>{{ $p->id }}</td>
-                      <td>#{{ $p->order_id }}</td>
-                      <td class="text-capitalize">{{ $p->metodo_pago ?? '—' }}</td>
-                      <td><strong>${{ number_format($p->monto ?? 0, 2) }}</strong></td>
+                      <td>
+                        @if($p->sale_id)
+                          <span class="badge text-bg-info">Venta POS</span>
+                        @elseif($p->order_id)
+                          <span class="badge text-bg-primary">Pedido</span>
+                        @else
+                          <span class="badge text-bg-secondary">—</span>
+                        @endif
+                      </td>
+                      <td>
+                        @if($p->sale_id)
+                          <a href="{{ route('pos.show', $p->sale_id) }}">Venta #{{ $p->sale_id }}</a>
+                        @elseif($p->order_id)
+                          <a href="{{ route('pedidos.show', $p->order_id) }}">Pedido #{{ $p->order_id }}</a>
+                        @else
+                          —
+                        @endif
+                      </td>
+                      <td>
+                        @if($p->forma_pago === 'transferencia')
+                          <span class="badge text-bg-primary">
+                            <i class="bi bi-bank me-1"></i> Transferencia
+                          </span>
+                        @elseif($p->forma_pago === 'efectivo')
+                          <span class="badge text-bg-success">
+                            <i class="bi bi-cash-stack me-1"></i> Efectivo
+                          </span>
+                        @elseif($p->forma_pago === 'tarjeta')
+                          <span class="badge text-bg-info">
+                            <i class="bi bi-credit-card me-1"></i> Tarjeta
+                          </span>
+                        @else
+                          <span class="badge text-bg-secondary">{{ $p->forma_pago ?? '—' }}</span>
+                        @endif
+                      </td>
+                      <td>
+                        <strong class="@if($p->forma_pago === 'transferencia') text-primary @elseif($p->forma_pago === 'efectivo') text-success @endif">
+                          ${{ number_format($p->monto ?? 0, 2) }}
+                        </strong>
+                      </td>
+                      <td>
+                        <span class="badge rounded-pill
+                          @if($p->estado==='completado' || $p->estado==='depositado') text-bg-success
+                          @elseif($p->estado==='en_caja') text-bg-info
+                          @elseif($p->estado==='en_ruta') text-bg-warning
+                          @else text-bg-secondary
+                          @endif">
+                          @if($p->estado === 'completado')
+                            ✅ Completado
+                          @elseif($p->estado === 'en_ruta')
+                            🚚 En ruta
+                          @else
+                            {{ ucfirst($p->estado ?? '—') }}
+                          @endif
+                        </span>
+                      </td>
                       <td>{{ $p->created_at?->format('d M Y H:i') }}</td>
                     </tr>
                   @endforeach

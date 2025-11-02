@@ -14,14 +14,34 @@ class DeliveryController extends Controller
     public function assign(Request $r)
     {
         $pedido = Order::findOrFail($r->order_id);
-        DeliveryAssignment::create([
-            'order_id' => $pedido->id,
-            'courier_id' => $r->courier_id,
-            'asignado_at' => now(),
-            'estado' => 'pendiente'
+        
+        // Validación
+        $r->validate([
+            'courier_id' => ['required', 'exists:users,id']
         ]);
+        
+        // Si ya existe una asignación, actualizarla; si no, crear una nueva
+        $assignment = $pedido->assignment;
+        
+        if ($assignment) {
+            $assignment->update([
+                'courier_id' => $r->courier_id,
+                'asignado_at' => now(),
+                'estado' => 'pendiente'
+            ]);
+            $msg = 'Chofer reasignado.';
+        } else {
+            DeliveryAssignment::create([
+                'order_id' => $pedido->id,
+                'courier_id' => $r->courier_id,
+                'asignado_at' => now(),
+                'estado' => 'pendiente'
+            ]);
+            $msg = 'Chofer asignado.';
+        }
+        
         $pedido->update(['estado'=>'asignado']);
-        return back()->with('ok','Repartidor asignado.');
+        return back()->with('ok', $msg);
     }
 
     public function scan(Request $r)
