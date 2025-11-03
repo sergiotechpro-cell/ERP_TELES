@@ -9,9 +9,6 @@
     <h2 class="fw-bold mb-0"><i class="bi bi-boxes me-2"></i> Inventario</h2>
     <div class="d-flex gap-2">
       <x-searchbar :action="route('inventario.index')" />
-      <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-outline-primary">
-        <i class="bi bi-building"></i> Bodegas
-      </a>
       <a href="{{ route('inventario.create') }}" class="btn btn-primary">
         <i class="bi bi-plus-lg"></i> Nuevo Producto
       </a>
@@ -29,7 +26,6 @@
               <th>Producto</th>
               <th>Costo</th>
               <th>Precio</th>
-              <th>Bodegas</th>
               <th>Stock Total</th>
               <th class="text-end">Acciones</th>
             </tr>
@@ -41,13 +37,8 @@
                 <td>${{ number_format($p->costo_unitario,2) }}</td>
                 <td>${{ number_format($p->precio_venta,2) }}</td>
                 <td>
-                  @forelse($p->warehouses as $w)
-                    <span class="badge text-bg-light me-1">{{ $w->nombre }}: {{ $w->pivot->stock }}</span>
-                  @empty
-                    <span class="text-secondary">—</span>
-                  @endforelse
+                  <span class="badge bg-primary">{{ $p->warehouses->sum(fn($w)=>$w->pivot->stock) }} unidades</span>
                 </td>
-                <td>{{ $p->warehouses->sum(fn($w)=>$w->pivot->stock) }}</td>
                 <td class="text-end">
                   <a class="btn btn-sm btn-outline-secondary" href="{{ route('inventario.show',$p) }}">
                     <i class="bi bi-eye"></i>

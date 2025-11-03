@@ -35,7 +35,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">App de Chofer</h1>
+          <h1 className="text-3xl font-bold text-gray-900">GRC ELECTRONICS</h1>
           <p className="text-gray-600 mt-2">Inicia sesión para comenzar</p>
         </div>
 

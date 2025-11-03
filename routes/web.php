@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\{
     DashboardController,
     InventoryController,
+    WarehouseController,
     OrderController,
     DeliveryController,
     FinanceController,
@@ -34,23 +35,12 @@ Route::middleware(['auth'])->group(function () {
     // ================== DASHBOARD ==================
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // ================== BODEGAS ==================
+    Route::resource('bodegas', WarehouseController::class);
+
     // ================== INVENTARIO ==================
     // NOTA: Las rutas específicas deben ir ANTES del resource route para evitar conflictos
     
-    // Gestión de bodegas (rutas específicas primero)
-    Route::get('/inventario/warehouses', [InventoryController::class, 'indexWarehouses'])
-        ->name('inventario.warehouses.index');
-    Route::get('/inventario/warehouses/create', [InventoryController::class, 'createWarehouse'])
-        ->name('inventario.warehouses.create');
-    Route::post('/inventario/warehouses', [InventoryController::class, 'storeWarehouse'])
-        ->name('inventario.warehouses.store');
-    Route::get('/inventario/warehouses/{warehouse}/edit', [InventoryController::class, 'editWarehouse'])
-        ->name('inventario.warehouses.edit');
-    Route::put('/inventario/warehouses/{warehouse}', [InventoryController::class, 'updateWarehouse'])
-        ->name('inventario.warehouses.update');
-    Route::delete('/inventario/warehouses/{warehouse}', [InventoryController::class, 'destroyWarehouse'])
-        ->name('inventario.warehouses.destroy');
-
     // Alta de stock desde la UI (rutas específicas primero)
     Route::get('/inventario/stock/create', [InventoryController::class, 'createStock'])
         ->name('inventario.stock.create');

@@ -18,7 +18,7 @@
     <div class="alert alert-warning d-flex align-items-center" role="alert">
       <i class="bi bi-exclamation-triangle-fill me-2"></i>
       <div>
-        No hay bodegas disponibles. <a href="{{ route('inventario.warehouses.create') }}" class="alert-link">Crear bodega</a>.
+        No hay bodegas disponibles. <a href="{{ route('bodegas.create') }}" class="alert-link">Crear bodega</a>.
       </div>
     </div>
   @endif

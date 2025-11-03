@@ -7,11 +7,9 @@
 <div class="container-fluid">
   <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <h2 class="fw-bold mb-0"><i class="bi bi-building me-2"></i> Bodegas y Almacenes</h2>
-    <div class="d-flex gap-2">
-      <a href="{{ route('bodegas.create') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> Nueva Bodega
-      </a>
-    </div>
+    <a href="{{ route('bodegas.create') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg"></i> Nueva Bodega
+    </a>
   </div>
 
   @if($bodegas->count() === 0)
@@ -51,7 +49,7 @@
                 </td>
                 <td>
                   <span class="badge text-bg-light">
-                    {{ $bodega->warehouseProducts()->count() }} producto(s)
+                    {{ $bodega->warehouse_products_count ?? 0 }} producto(s)
                   </span>
                 </td>
                 <td class="text-end">
@@ -76,6 +74,9 @@
             @endforeach
           </tbody>
         </table>
+      </div>
+      <div class="card-body">
+        {{ $bodegas->links() }}
       </div>
     </div>
 

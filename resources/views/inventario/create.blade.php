@@ -7,41 +7,17 @@
 <div class="container" style="max-width: 980px;">
   <div class="d-flex align-items-center justify-content-between mb-4">
     <h3 class="fw-bold mb-0"><i class="bi bi-plus-square me-2"></i>Nuevo producto</h3>
-    <div class="d-flex gap-2">
-      <div class="d-flex gap-2">
-        <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">
-          <i class="bi bi-building"></i> Bodegas
-        </a>
-        <a href="{{ route('inventario.warehouses.create') }}" class="btn btn-light">
-          <i class="bi bi-building-add"></i> Nueva bodega
-        </a>
-      </div>
-      <a href="{{ route('inventario.index') }}" class="btn btn-light">
-        <i class="bi bi-arrow-left"></i> Volver
-      </a>
-    </div>
+    <a href="{{ route('inventario.index') }}" class="btn btn-light">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
   </div>
 
-  @if($bodegas->isEmpty())
-    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-start" role="alert" style="border-radius:12px;">
-      <i class="bi bi-exclamation-triangle-fill me-3 fs-5 mt-1"></i>
-      <div class="flex-fill">
-        <strong>Recomendación:</strong> Crea primero una bodega antes de agregar productos. Esto te permitirá asignar stock inicial al crear el producto.
-        <div class="mt-2">
-          <a href="{{ route('inventario.warehouses.create') }}" class="btn btn-sm btn-warning">
-            <i class="bi bi-building-add"></i> Crear bodega ahora
-          </a>
-        </div>
-      </div>
+  <div class="alert alert-info border-0 shadow-sm d-flex align-items-center" role="alert" style="border-radius:12px;">
+    <i class="bi bi-info-circle me-2"></i>
+    <div class="flex-fill">
+      <strong>Tip:</strong> Puedes crear el producto sin stock inicial y agregarlo después, o asignar stock a múltiples almacenes desde aquí.
     </div>
-  @else
-    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center" role="alert" style="border-radius:12px;">
-      <i class="bi bi-info-circle me-2"></i>
-      <div class="flex-fill">
-        <strong>Tip:</strong> Puedes crear el producto sin stock inicial y agregarlo después, o asignar stock a múltiples bodegas desde aquí.
-      </div>
-    </div>
-  @endif
+  </div>
 
   <div class="card border-0 shadow-sm" style="border-radius:16px;">
     <div class="card-body">
@@ -120,8 +96,7 @@
   
   function addWarehouseRow() {
     if (warehouses.length === 0) {
-      alert('Primero debes crear una bodega.');
-      window.location.href = '{{ route("inventario.warehouses.create") }}';
+      alert('No hay almacenes disponibles. Ve al módulo de Bodegas para crear uno.');
       return;
     }
     

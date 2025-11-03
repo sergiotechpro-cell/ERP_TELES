@@ -18,16 +18,30 @@
     <div class="col-md-3">
       <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
         <div class="card-body">
-          <div class="small text-secondary">Costo total de inventario</div>
-          <div class="display-6 fw-bold">${{ number_format($inventario ?? 0, 2) }}</div>
+          <div class="small text-secondary mb-1">
+            <i class="bi bi-box-seam me-1"></i> Costo total de inventario
+          </div>
+          <div class="display-6 fw-bold">${{ number_format((float)($inventario ?? 0), 2) }}</div>
+          @if(($inventario ?? 0) == 0)
+          <div class="small text-secondary mt-2">
+            <i class="bi bi-info-circle"></i> Sin productos en stock
+          </div>
+          @endif
         </div>
       </div>
     </div>
     <div class="col-md-3">
       <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
         <div class="card-body">
-          <div class="small text-secondary">Utilidad proyectada</div>
-          <div class="display-6 fw-bold">${{ number_format($utilidadProyectada ?? 0, 2) }}</div>
+          <div class="small text-secondary mb-1">
+            <i class="bi bi-graph-up me-1"></i> Utilidad proyectada
+          </div>
+          <div class="display-6 fw-bold {{ ($utilidadProyectada ?? 0) > 0 ? 'text-success' : '' }}">${{ number_format((float)($utilidadProyectada ?? 0), 2) }}</div>
+          @if(($utilidadProyectada ?? 0) == 0)
+          <div class="small text-secondary mt-2">
+            <i class="bi bi-info-circle"></i> Sin productos en stock
+          </div>
+          @endif
         </div>
       </div>
     </div>
@@ -37,9 +51,9 @@
           <div class="small text-secondary">
             <i class="bi bi-cash-stack text-success me-1"></i> Efectivo hoy
           </div>
-          <div class="display-6 fw-bold text-success">${{ number_format($totalEfectivoHoy ?? 0, 2) }}</div>
+          <div class="display-6 fw-bold text-success">${{ number_format((float)($totalEfectivoHoy ?? 0), 2) }}</div>
           <div class="small text-secondary mt-2">
-            {{ $countEfectivoHoy ?? 0 }} pago(s) · 7 días: ${{ number_format($totalEfectivo7Dias ?? 0, 2) }}
+            {{ (int)($countEfectivoHoy ?? 0) }} pago(s) · 7 días: ${{ number_format((float)($totalEfectivo7Dias ?? 0), 2) }}
           </div>
         </div>
       </div>
@@ -50,9 +64,9 @@
           <div class="small text-secondary">
             <i class="bi bi-bank text-primary me-1"></i> Transferencia hoy
           </div>
-          <div class="display-6 fw-bold text-primary">${{ number_format($totalTransferenciaHoy ?? 0, 2) }}</div>
+          <div class="display-6 fw-bold text-primary">${{ number_format((float)($totalTransferenciaHoy ?? 0), 2) }}</div>
           <div class="small text-secondary mt-2">
-            {{ $countTransferenciaHoy ?? 0 }} pago(s) · 7 días: ${{ number_format($totalTransferencia7Dias ?? 0, 2) }}
+            {{ (int)($countTransferenciaHoy ?? 0) }} pago(s) · 7 días: ${{ number_format((float)($totalTransferencia7Dias ?? 0), 2) }}
           </div>
         </div>
       </div>
@@ -67,8 +81,8 @@
           <div class="row align-items-center">
             <div class="col-md-8">
               <div class="small opacity-75">Total ingresos hoy</div>
-              <div class="display-5 fw-bold">${{ number_format($totalPagosHoy ?? 0, 2) }}</div>
-              <div class="small opacity-75 mt-2">Total últimos 7 días: ${{ number_format($totalPagos7Dias ?? 0, 2) }}</div>
+              <div class="display-5 fw-bold">${{ number_format((float)($totalPagosHoy ?? 0), 2) }}</div>
+              <div class="small opacity-75 mt-2">Total últimos 7 días: ${{ number_format((float)($totalPagos7Dias ?? 0), 2) }}</div>
             </div>
             <div class="col-md-4 text-end">
               <div class="display-1 opacity-25">💰</div>

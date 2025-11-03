@@ -4,7 +4,58 @@
 @section('content')
 <x-flash />
 
-<form method="POST" action="{{ route('pos.store') }}" id="posForm">
+{{-- Alertas de elementos faltantes --}}
+@if(!$canProceed || !$hasProductos || !$hasBodegas || !$hasChoferes || !$hasClientes)
+<div class="alert alert-warning border-0 shadow-sm mb-4" style="border-radius:16px;">
+  <div class="d-flex align-items-start">
+    <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+    <div class="flex-grow-1">
+      <h6 class="fw-bold mb-2">⚠️ Antes de realizar ventas, necesitas:</h6>
+      <ul class="mb-2">
+        @if(!$hasProductos)
+        <li class="mb-1">
+          <strong class="text-danger">Productos:</strong> No hay productos registrados
+          <a href="{{ route('inventario.create') }}" class="btn btn-sm btn-outline-primary ms-2" target="_blank">
+            <i class="bi bi-plus-circle"></i> Crear producto
+          </a>
+        </li>
+        @endif
+        @if(!$hasBodegas)
+        <li class="mb-1">
+          <strong class="text-danger">Bodegas:</strong> No hay bodegas registradas
+          <a href="{{ route('bodegas.create') }}" class="btn btn-sm btn-outline-primary ms-2" target="_blank">
+            <i class="bi bi-plus-circle"></i> Crear bodega
+          </a>
+        </li>
+        @endif
+        @if(!$hasChoferes)
+        <li class="mb-1">
+          <strong class="text-warning">Choferes:</strong> No hay choferes registrados (requerido para entregas)
+          <a href="{{ route('empleados.create') }}" class="btn btn-sm btn-outline-warning ms-2" target="_blank">
+            <i class="bi bi-plus-circle"></i> Crear chofer
+          </a>
+        </li>
+        @endif
+        @if(!$hasClientes)
+        <li class="mb-1">
+          <strong class="text-info">Clientes:</strong> Recomendado registrar clientes
+          <a href="{{ route('clientes.create') }}" class="btn btn-sm btn-outline-info ms-2" target="_blank">
+            <i class="bi bi-plus-circle"></i> Crear cliente
+          </a>
+        </li>
+        @endif
+      </ul>
+      @if(!$canProceed)
+      <div class="alert alert-danger py-2 mb-0">
+        <strong>No puedes realizar ventas hasta que crees los elementos requeridos (Productos y Bodegas).</strong>
+      </div>
+      @endif
+    </div>
+  </div>
+</div>
+@endif
+
+<form method="POST" action="{{ route('pos.store') }}" id="posForm" @if(!$canProceed) onsubmit="event.preventDefault(); alert('Debes crear al menos un producto y una bodega antes de realizar ventas.'); return false;" @endif>
   @csrf
 
   <div class="row g-3">
@@ -114,10 +165,26 @@
               <div id="address_validation_info_pos" class="mt-2"></div>
             </div>
 
+            <div class="mb-3">
+              <label class="form-label">Chofer (opcional)</label>
+              <select name="courier_id" id="courier_id_pos" class="form-select">
+                <option value="">Sin asignar - Asignar después</option>
+                @foreach($choferes ?? [] as $chofer)
+                  <option value="{{ $chofer->id }}">
+                    {{ $chofer->name }}
+                    @if($chofer->email)
+                      - {{ $chofer->email }}
+                    @endif
+                  </option>
+                @endforeach
+              </select>
+              <small class="text-secondary">Puedes asignar el chofer ahora o después desde el módulo de pedidos.</small>
+            </div>
+
             <div class="row g-2 mb-3">
               <div class="col-md-6">
                 <label class="form-label">Km estimados</label>
-                <input id="km_pos" type="number" min="0" step="0.1" class="form-control" value="0">
+                <input id="km_pos" type="number" min="0" step="1" class="form-control" value="0">
                 <small class="text-secondary">Banderazo 10km = $100; + $10 por km adicional.</small>
               </div>
               <div class="col-md-6">
@@ -126,8 +193,11 @@
               </div>
               <div class="col-12">
                 <button type="button" class="btn btn-outline-primary w-100" id="btnCalcEnvioPos">
-                  <i class="bi bi-geo-alt"></i> Calcular envío
+                  <i class="bi bi-geo-alt"></i> Calcular envío automáticamente
                 </button>
+                <small class="text-secondary d-block mt-1 text-center">
+                  <i class="bi bi-info-circle"></i> Calcula desde la dirección o ingresa km manualmente
+                </small>
               </div>
               <div class="col-12">
                 <div id="distance_info_pos" class="alert alert-info d-none">
@@ -308,11 +378,21 @@
         'descripcion' => $p->descripcion,
         'precio' => (float) $precio,
         'costo'  => (float) $p->costo_unitario,
+        'stock'  => (int) ($p->stock_total ?? 0),
       ];
   })->values();
   
   $bodRows = $bodegas->map(function($b) {
       return ['id' => $b->id, 'nombre' => $b->nombre];
+  })->values();
+  
+  $clientRows = $clientes->map(function($c) {
+      return [
+        'id' => $c->id,
+        'nombre' => $c->nombre ?? '',
+        'telefono' => $c->telefono ?? '',
+        'direccion' => $c->direccion_entrega ?? '',
+      ];
   })->values();
 @endphp
 
@@ -332,6 +412,7 @@
   // Datos listos para JS
   const productos = @json($prodRows);
   const bodegas   = @json($bodRows);
+  const clientes  = @json($clientRows);
   const mapsKey   = @json($mapsKey ?? null);
   const originLat = {{ $originLat ?? 19.432608 }};
   const originLng = {{ $originLng ?? -99.133209 }};
@@ -344,9 +425,67 @@
   const camposEntrega = document.getElementById('campos_entrega');
   const btnText = document.getElementById('btnText');
   const direccionInput = document.getElementById('direccion_entrega_pos');
+  const customerSelect = document.getElementById('customer_id');
+  const clienteNombreInput = document.querySelector('input[name="cliente_nombre"]');
+  const clienteTelefonoInput = document.querySelector('input[name="cliente_telefono"]');
   
   let autocomplete = null;
   let selectedPlace = null;
+  
+  // Autocompletar campos cuando se selecciona un cliente
+  customerSelect.addEventListener('change', function() {
+    const clienteId = this.value;
+    if (clienteId) {
+      const cliente = clientes.find(c => c.id == clienteId);
+      if (cliente) {
+        // Autocompletar nombre y teléfono
+        if (clienteNombreInput) {
+          clienteNombreInput.value = cliente.nombre || '';
+        }
+        if (clienteTelefonoInput) {
+          clienteTelefonoInput.value = cliente.telefono || '';
+        }
+        // Autocompletar dirección si existe y está en modo entrega
+        if (cliente.direccion && tipoVentaSelect.value === 'entrega' && direccionInput) {
+          direccionInput.value = cliente.direccion;
+          // Si hay API key, intentar validar y calcular distancia (esperar a que Google Maps esté cargado)
+          if (mapsKey) {
+            const loadMapsAndGeocode = function() {
+              if (window.google && window.google.maps && window.google.maps.Geocoder) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: cliente.direccion }, function(results, status) {
+                  if (status === 'OK' && results[0]) {
+                    const lat = results[0].geometry.location.lat();
+                    const lng = results[0].geometry.location.lng();
+                    document.getElementById('address_lat_pos').value = lat;
+                    document.getElementById('address_lng_pos').value = lng;
+                    if (window.calculateDistancePos) {
+                      window.calculateDistancePos(lat, lng, false);
+                    }
+                    if (window.validateAddressPos) {
+                      const place = {
+                        formatted_address: cliente.direccion,
+                        geometry: results[0].geometry
+                      };
+                      validateAddressPos(place);
+                    }
+                  }
+                });
+              } else {
+                // Esperar un poco más si Google Maps aún no está cargado
+                setTimeout(loadMapsAndGeocode, 500);
+              }
+            };
+            loadMapsAndGeocode();
+          }
+        }
+      }
+    } else {
+      // Limpiar campos si no hay cliente seleccionado
+      if (clienteNombreInput) clienteNombreInput.value = '';
+      if (clienteTelefonoInput) clienteTelefonoInput.value = '';
+    }
+  });
 
   function money(n){
     return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(Number(n||0));
@@ -367,7 +506,7 @@
   }
 
   function optionsProductos(){
-    return productos.map(p => `<option value="${p.id}" data-price="${p.precio}">${p.descripcion}</option>`).join('');
+    return productos.map(p => `<option value="${p.id}" data-price="${p.precio}" data-stock="${p.stock}">${p.descripcion} ${p.stock > 0 ? `(${p.stock} disponibles)` : '(sin stock)'}</option>`).join('');
   }
 
   function addRow(preset=null){
@@ -381,6 +520,7 @@
       </td>
       <td>
         <input type="number" class="form-control qty" min="1" value="${preset?.qty ?? 1}">
+        <small class="stock-warning d-none"></small>
       </td>
       <td>
         <input type="number" class="form-control price" step="0.01" value="${preset?.price ?? 0}">
@@ -400,10 +540,67 @@
       const opt = prodSel.selectedOptions[0];
       if(opt && opt.dataset.price){
         priceI.value = opt.dataset.price;
+        const stock = parseInt(opt.dataset.stock || 0);
+        qtyI.max = stock;
+        qtyI.min = stock > 0 ? 1 : 0;
+        
+        // Mostrar advertencia si no hay stock
+        const warning = tr.querySelector('.stock-warning');
+        if (stock === 0) {
+          qtyI.setAttribute('readonly', 'readonly');
+          qtyI.classList.add('bg-warning');
+          qtyI.value = 0;
+          if (warning) {
+            warning.className = 'stock-warning text-danger d-block mt-1';
+            warning.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Sin stock disponible';
+          }
+        } else {
+          qtyI.removeAttribute('readonly');
+          qtyI.classList.remove('bg-warning');
+          const currentQty = parseInt(qtyI.value || 1);
+          qtyI.value = Math.min(Math.max(currentQty, 1), stock);
+          if (warning) {
+            warning.className = 'stock-warning d-none';
+            warning.innerHTML = '';
+          }
+        }
+        
         calc();
       }
     });
-    qtyI.addEventListener('input', calc);
+    qtyI.addEventListener('input', function(){
+      const opt = prodSel.selectedOptions[0];
+      if (opt) {
+        const stock = parseInt(opt.dataset.stock || 0);
+        const qty = parseInt(this.value || 0);
+        
+        if (qty > stock) {
+          this.value = stock;
+          alert(`Stock disponible: ${stock} unidades. Se ajustó la cantidad al máximo disponible.`);
+        }
+        
+        // Mostrar advertencia si la cantidad está cerca del límite
+        const warning = tr.querySelector('.stock-warning');
+        if (qty > 0 && qty <= stock && stock > 0) {
+          if (warning) {
+            if (qty === stock) {
+              warning.className = 'stock-warning text-warning d-block mt-1';
+              warning.innerHTML = `<i class="bi bi-exclamation-triangle"></i> Cantidad máxima disponible`;
+            } else if (qty > stock * 0.8) {
+              warning.className = 'stock-warning text-warning d-block mt-1';
+              warning.innerHTML = `<i class="bi bi-info-circle"></i> Solo quedan ${stock} unidades disponibles`;
+            } else {
+              warning.className = 'stock-warning d-none';
+              warning.innerHTML = '';
+            }
+          }
+        } else if (warning && !warning.classList.contains('text-danger')) {
+          warning.className = 'stock-warning d-none';
+          warning.innerHTML = '';
+        }
+      }
+      calc();
+    });
     priceI.addEventListener('input', calc);
     tr.querySelector('.rm').addEventListener('click', ()=>{ tr.remove(); calc(); });
 
@@ -423,6 +620,45 @@
       camposEntrega.classList.remove('d-none');
       direccionInput.setAttribute('required', 'required');
       btnText.textContent = 'Crear pedido';
+      
+      // Si hay un cliente seleccionado, autocompletar dirección también
+      const clienteId = customerSelect.value;
+      if (clienteId) {
+        const cliente = clientes.find(c => c.id == clienteId);
+        if (cliente && cliente.direccion && direccionInput) {
+          direccionInput.value = cliente.direccion;
+          // Si hay API key, validar y calcular distancia (esperar a que Google Maps esté cargado)
+          if (mapsKey) {
+            const loadMapsAndGeocode = function() {
+              if (window.google && window.google.maps && window.google.maps.Geocoder) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: cliente.direccion }, function(results, status) {
+                  if (status === 'OK' && results[0]) {
+                    const lat = results[0].geometry.location.lat();
+                    const lng = results[0].geometry.location.lng();
+                    document.getElementById('address_lat_pos').value = lat;
+                    document.getElementById('address_lng_pos').value = lng;
+                    if (window.calculateDistancePos) {
+                      window.calculateDistancePos(lat, lng, false);
+                    }
+                    if (window.validateAddressPos) {
+                      const place = {
+                        formatted_address: cliente.direccion,
+                        geometry: results[0].geometry
+                      };
+                      validateAddressPos(place);
+                    }
+                  }
+                });
+              } else {
+                // Esperar un poco más si Google Maps aún no está cargado
+                setTimeout(loadMapsAndGeocode, 500);
+              }
+            };
+            loadMapsAndGeocode();
+          }
+        }
+      }
     } else {
       camposEntrega.classList.add('d-none');
       direccionInput.removeAttribute('required');
@@ -457,15 +693,28 @@
       direccionInput.value = selectedPlace.formatted_address;
       
       validateAddressPos(selectedPlace);
-      calculateDistancePos(lat, lng);
+      calculateDistancePos(lat, lng, false);
     });
   }
 
-  // Validar dirección usando Address Validation API
-  async function validateAddressPos(place) {
+  // Hacer función global para validar dirección
+  window.validateAddressPos = async function(place) {
     const validationInfo = document.getElementById('address_validation_info_pos');
     
-    if (!mapsKey) return;
+    if (!mapsKey) {
+      validationInfo.innerHTML = `
+        <div class="alert alert-info py-2 mb-0">
+          <i class="bi bi-info-circle"></i> 
+          <small>API key no configurada. No se puede validar la dirección.</small>
+        </div>
+      `;
+      return;
+    }
+
+    if (!place || !place.formatted_address) {
+      validationInfo.innerHTML = '';
+      return;
+    }
 
     try {
       const response = await fetch('https://addressvalidation.googleapis.com/v1:validateAddress?key=' + mapsKey, {
@@ -479,10 +728,15 @@
         })
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
       
       if (data.result && data.result.verdict) {
         const verdict = data.result.verdict;
+        const address = data.result.address || {};
         
         if (verdict.validationGranularity === 'PREMISE' || verdict.validationGranularity === 'SUB_PREMISE') {
           validationInfo.innerHTML = `
@@ -491,26 +745,70 @@
               <small>Dirección válida y completa</small>
             </div>
           `;
-        } else {
+        } else if (verdict.validationGranularity === 'ROUTE' || verdict.validationGranularity === 'LOCALITY') {
           validationInfo.innerHTML = `
             <div class="alert alert-warning py-2 mb-0">
               <i class="bi bi-exclamation-triangle"></i> 
               <small>Dirección parcial - verifica el número de casa</small>
             </div>
           `;
+        } else {
+          validationInfo.innerHTML = `
+            <div class="alert alert-warning py-2 mb-0">
+              <i class="bi bi-info-circle"></i> 
+              <small>Dirección validada en nivel: ${verdict.validationGranularity}</small>
+            </div>
+          `;
         }
+        
+        // Mostrar dirección formateada sugerida si existe y es diferente
+        if (address.formattedAddress && address.formattedAddress !== place.formatted_address) {
+          validationInfo.innerHTML += `
+            <div class="mt-1">
+              <small class="text-secondary">Sugerencia: ${address.formattedAddress}</small>
+            </div>
+          `;
+        }
+      } else {
+        validationInfo.innerHTML = `
+          <div class="alert alert-info py-2 mb-0">
+            <i class="bi bi-info-circle"></i> 
+            <small>Dirección registrada (no se pudo validar completamente)</small>
+          </div>
+        `;
       }
     } catch (error) {
       console.error('Error al validar dirección:', error);
+      validationInfo.innerHTML = `
+        <div class="alert alert-warning py-2 mb-0">
+          <i class="bi bi-exclamation-triangle"></i> 
+          <small>No se pudo validar la dirección. Verifica que sea correcta.</small>
+        </div>
+      `;
     }
+  };
+  
+  // Alias para compatibilidad
+  async function validateAddressPos(place) {
+    return window.validateAddressPos(place);
   }
 
-  // Calcular distancia desde origen
-  function calculateDistancePos(destLat, destLng) {
-    if (!mapsKey) return;
+  // Hacer función global para poder llamarla desde el evento de cliente
+  window.calculateDistancePos = function(destLat, destLng, restoreButton = true) {
+    if (!mapsKey || !window.google || !window.google.maps) {
+      if (restoreButton) {
+        const btn = document.getElementById('btnCalcEnvioPos');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="bi bi-geo-alt"></i> Calcular envío automáticamente';
+        }
+      }
+      return;
+    }
     
     const distanceInfo = document.getElementById('distance_info_pos');
     const distanceText = document.getElementById('distance_text_pos');
+    const btn = document.getElementById('btnCalcEnvioPos');
     
     const origin = { lat: originLat, lng: originLng };
     const destination = { lat: destLat, lng: destLng };
@@ -523,20 +821,34 @@
       travelMode: google.maps.TravelMode.DRIVING,
       unitSystem: google.maps.UnitSystem.METRIC
     }, function(response, status) {
+      if (restoreButton && btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-geo-alt"></i> Calcular envío automáticamente';
+      }
+      
       if (status === 'OK' && response.rows[0].elements[0].status === 'OK') {
         const element = response.rows[0].elements[0];
         const distance = element.distance.value / 1000; // en km
+        const distanceKm = Math.round(distance); // Redondear km a entero
         const duration = element.duration.text;
         
         distanceText.textContent = `Distancia: ${element.distance.text} | Tiempo: ${duration}`;
         distanceInfo.classList.remove('d-none');
         
-        document.getElementById('km_pos').value = distance.toFixed(2);
-        document.getElementById('costo_envio_pos').value = calcularEnvioPos(distance);
+        document.getElementById('km_pos').value = distanceKm;
+        document.getElementById('costo_envio_pos').value = calcularEnvioPos(distanceKm);
       } else {
         distanceInfo.classList.add('d-none');
+        if (status !== 'OK') {
+          alert('No se pudo calcular la distancia. Verifica la dirección o ingresa los km manualmente.');
+        }
       }
     });
+  };
+  
+  // Calcular distancia desde origen (alias para compatibilidad)
+  function calculateDistancePos(destLat, destLng) {
+    window.calculateDistancePos(destLat, destLng);
   }
 
   // Cálculo de envío: banderazo 10 km = $100; + $10 por km adicional
@@ -547,24 +859,111 @@
   }
 
   document.getElementById('btnCalcEnvioPos').addEventListener('click', function() {
+    const btn = this;
     const kmInput = document.getElementById('km_pos');
-    const lat = document.getElementById('address_lat_pos').value;
-    const lng = document.getElementById('address_lng_pos').value;
+    const latInput = document.getElementById('address_lat_pos');
+    const lngInput = document.getElementById('address_lng_pos');
+    const direccionText = direccionInput.value.trim();
+    const lat = latInput.value;
+    const lng = lngInput.value;
+    const distanceInfo = document.getElementById('distance_info_pos');
+    const distanceText = document.getElementById('distance_text_pos');
     
-    if (lat && lng && mapsKey) {
-      calculateDistancePos(parseFloat(lat), parseFloat(lng));
-    } else {
-      document.getElementById('costo_envio_pos').value = calcularEnvioPos(kmInput.value);
+    // Deshabilitar botón mientras calcula
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Calculando...';
+    
+    // Si hay coordenadas, calcular directamente
+    if (lat && lng && mapsKey && window.google && window.google.maps) {
+      calculateDistancePos(parseFloat(lat), parseFloat(lng), true);
+      return;
     }
+    
+    // Si hay dirección escrita pero no coordenadas, intentar geocodificar
+    if (direccionText && mapsKey && window.google && window.google.maps && window.google.maps.Geocoder) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: direccionText }, function(results, status) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-geo-alt"></i> Calcular envío';
+        
+        if (status === 'OK' && results[0]) {
+          const lat = results[0].geometry.location.lat();
+          const lng = results[0].geometry.location.lng();
+          latInput.value = lat;
+          lngInput.value = lng;
+          calculateDistancePos(lat, lng, true);
+        } else {
+          // Si falla la geocodificación, usar el km manual
+          const kmManual = Math.round(parseFloat(kmInput.value) || 0);
+          kmInput.value = kmManual;
+          document.getElementById('costo_envio_pos').value = calcularEnvioPos(kmManual);
+          
+          distanceInfo.classList.add('d-none');
+          alert('No se pudo calcular la distancia automáticamente. Usa el campo "Km estimados" para ingresar la distancia manualmente.');
+        }
+      });
+      return;
+    }
+    
+    // Si no hay coordenadas ni dirección, usar km manual
+    const kmManual = Math.round(parseFloat(kmInput.value) || 0);
+    
+    if (kmManual <= 0) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-geo-alt"></i> Calcular envío';
+      alert('Ingresa la distancia en kilómetros o selecciona una dirección válida para calcular automáticamente.');
+      kmInput.focus();
+      return;
+    }
+    
+    kmInput.value = kmManual;
+    document.getElementById('costo_envio_pos').value = calcularEnvioPos(kmManual);
+    distanceInfo.classList.add('d-none');
+    
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-geo-alt"></i> Calcular envío';
   });
 
   document.getElementById('km_pos').addEventListener('input', function() {
-    document.getElementById('costo_envio_pos').value = calcularEnvioPos(this.value);
+    const kmValue = Math.round(parseFloat(this.value) || 0);
+    this.value = kmValue;
+    document.getElementById('costo_envio_pos').value = calcularEnvioPos(kmValue);
   });
   @endif
 
   // Serializa items al enviar
   document.getElementById('posForm').addEventListener('submit', (e)=>{
+    // Validar stock antes de enviar
+    let hasErrors = false;
+    let errorMessages = [];
+    
+    [...tbody.querySelectorAll('tr')].forEach((tr, idx) => {
+      const prodSel = tr.querySelector('.prod');
+      const qtyI = tr.querySelector('.qty');
+      
+      if (prodSel.value) {
+        const opt = prodSel.selectedOptions[0];
+        if (opt) {
+          const stock = parseInt(opt.dataset.stock || 0);
+          const qty = parseInt(qtyI.value || 0);
+          
+          if (stock === 0) {
+            hasErrors = true;
+            errorMessages.push(`El producto "${opt.textContent.split('(')[0].trim()}" no tiene stock disponible.`);
+          } else if (qty > stock) {
+            hasErrors = true;
+            errorMessages.push(`El producto "${opt.textContent.split('(')[0].trim()}" solo tiene ${stock} unidades disponibles.`);
+          }
+        }
+      }
+    });
+    
+    if (hasErrors) {
+      e.preventDefault();
+      alert('Error de stock:\n\n' + errorMessages.join('\n'));
+      return;
+    }
+    
     // Validar si es entrega y tiene dirección
     if (tipoVentaSelect.value === 'entrega') {
       if (!direccionInput.value.trim()) {

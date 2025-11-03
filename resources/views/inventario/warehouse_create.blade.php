@@ -9,14 +9,14 @@
     <h3 class="fw-bold mb-0">
       <i class="bi bi-building-add me-2"></i>Nueva bodega
     </h3>
-      <a href="{{ route('inventario.warehouses.index') }}" class="btn btn-light">
+      <a href="{{ route('bodegas.index') }}" class="btn btn-light">
         <i class="bi bi-arrow-left"></i> Volver
       </a>
   </div>
 
   <div class="card border-0 shadow-sm" style="border-radius:16px;">
     <div class="card-body">
-      <form method="POST" action="{{ route('inventario.warehouses.store') }}" class="row g-3">
+      <form method="POST" action="{{ route('bodegas.store') }}" class="row g-3">
         @csrf
 
         <div class="col-md-6">

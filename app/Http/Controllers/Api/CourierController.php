@@ -136,6 +136,29 @@ class CourierController extends Controller
             'order.payments'
         ]);
 
+        // Obtener coordenadas de origen desde bodega principal
+        $warehouse = \App\Models\Warehouse::whereNotNull('lat')
+            ->whereNotNull('lng')
+            ->orderBy('id')
+            ->first();
+        
+        if ($warehouse) {
+            $origin = [
+                'lat' => (float) $warehouse->lat,
+                'lng' => (float) $warehouse->lng,
+                'name' => $warehouse->nombre,
+                'address' => $warehouse->direccion ?? 'Bodega Principal',
+            ];
+        } else {
+            // Fallback a variables de entorno o CDMX por defecto
+            $origin = [
+                'lat' => (float) (env('WAREHOUSE_ORIGIN_LAT', 19.432608)),
+                'lng' => (float) (env('WAREHOUSE_ORIGIN_LNG', -99.133209)),
+                'name' => 'Bodega Principal',
+                'address' => env('WAREHOUSE_ORIGIN_ADDRESS', 'Ciudad de México, México'),
+            ];
+        }
+
         return response()->json([
             'data' => [
                 'id' => $assignment->id,
@@ -143,6 +166,7 @@ class CourierController extends Controller
                 'asignado_at' => $assignment->asignado_at,
                 'salida_at' => $assignment->salida_at,
                 'entregado_at' => $assignment->entregado_at,
+                'origen' => $origin,
                 'pedido' => [
                     'id' => $assignment->order->id,
                     'estado' => $assignment->order->estado,

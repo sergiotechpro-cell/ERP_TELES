@@ -18,24 +18,28 @@ class FinanceController extends Controller
         Carbon::setLocale('es');
 
         // ======== INVENTARIO ========
-        $inventario = WarehouseProduct::query()
-            ->join('products','products.id','=','warehouse_product.product_id')
-            ->selectRaw('COALESCE(SUM(warehouse_product.stock * products.costo_unitario),0) as costo_total')
-            ->value('costo_total');
+        // Calcular costo total del inventario (stock * costo_unitario)
+        $inventario = (float) (WarehouseProduct::query()
+            ->join('products', 'products.id', '=', 'warehouse_product.product_id')
+            ->where('warehouse_product.stock', '>', 0)
+            ->selectRaw('COALESCE(SUM(warehouse_product.stock * products.costo_unitario), 0) as costo_total')
+            ->value('costo_total') ?? 0);
 
-        $utilidadProyectada = WarehouseProduct::query()
-            ->join('products','products.id','=','warehouse_product.product_id')
+        // Calcular utilidad proyectada (stock * (precio_venta - costo_unitario))
+        $utilidadProyectada = (float) (WarehouseProduct::query()
+            ->join('products', 'products.id', '=', 'warehouse_product.product_id')
+            ->where('warehouse_product.stock', '>', 0)
             ->selectRaw("
                 COALESCE(
                     SUM(
                         warehouse_product.stock * (
-                            COALESCE(NULLIF(products.precio_mayoreo,0), products.precio_venta)
-                            - products.costo_unitario
+                            COALESCE(NULLIF(products.precio_mayoreo, 0), products.precio_venta)
+                            - COALESCE(products.costo_unitario, 0)
                         )
                     ), 0
                 ) as utilidad
             ")
-            ->value('utilidad');
+            ->value('utilidad') ?? 0);
 
         // ======== SERIES MENSUALES EN PHP ========
         // POS: ventas por mes
@@ -83,36 +87,47 @@ class FinanceController extends Controller
         $pagosUltimos7 = Payment::where('created_at','>=',now()->subDays(7))->count();
         $ventasPosRecientes = Sale::latest()->limit(5)->get();
         
-        // Totales de pagos (últimos 7 días y hoy)
-        $totalPagosHoy = Payment::whereDate('created_at', now()->toDateString())->sum('monto');
-        $totalPagos7Dias = Payment::where('created_at','>=',now()->subDays(7))->sum('monto');
+        // Totales de pagos (últimos 7 días y hoy) - considerar todos los estados excepto cancelados
+        $totalPagosHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
+            
+        $totalPagos7Dias = (float) (Payment::where('created_at','>=',now()->subDays(7))
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
         
-        // Totales por método de pago (hoy)
-        $totalEfectivoHoy = Payment::whereDate('created_at', now()->toDateString())
+        // Totales por método de pago (hoy) - solo pagos válidos
+        $totalEfectivoHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
             ->where('forma_pago', 'efectivo')
-            ->sum('monto');
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
         
-        $totalTransferenciaHoy = Payment::whereDate('created_at', now()->toDateString())
+        $totalTransferenciaHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
             ->where('forma_pago', 'transferencia')
-            ->sum('monto');
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
         
-        // Totales por método de pago (últimos 7 días)
-        $totalEfectivo7Dias = Payment::where('created_at','>=',now()->subDays(7))
+        // Totales por método de pago (últimos 7 días) - solo pagos válidos
+        $totalEfectivo7Dias = (float) (Payment::where('created_at','>=',now()->subDays(7))
             ->where('forma_pago', 'efectivo')
-            ->sum('monto');
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
         
-        $totalTransferencia7Dias = Payment::where('created_at','>=',now()->subDays(7))
+        $totalTransferencia7Dias = (float) (Payment::where('created_at','>=',now()->subDays(7))
             ->where('forma_pago', 'transferencia')
-            ->sum('monto');
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
         
-        // Contar pagos por método (hoy)
-        $countEfectivoHoy = Payment::whereDate('created_at', now()->toDateString())
+        // Contar pagos por método (hoy) - solo pagos válidos
+        $countEfectivoHoy = (int) (Payment::whereDate('created_at', now()->toDateString())
             ->where('forma_pago', 'efectivo')
-            ->count();
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->count() ?? 0);
         
-        $countTransferenciaHoy = Payment::whereDate('created_at', now()->toDateString())
+        $countTransferenciaHoy = (int) (Payment::whereDate('created_at', now()->toDateString())
             ->where('forma_pago', 'transferencia')
-            ->count();
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->count() ?? 0);
 
         return view('finanzas.index', compact(
             'inventario',

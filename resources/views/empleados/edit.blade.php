@@ -12,10 +12,38 @@
     <div class="card-body">
       <form method="POST" action="{{ route('empleados.update',$empleado) }}" class="row g-3">
         @csrf @method('PUT')
-        <div class="col-md-6"><label class="form-label">Nombre</label><input name="nombre" class="form-control" value="{{ $empleado->user->name }}" required></div>
-        <div class="col-md-6"><label class="form-label">Email</label><input name="email" type="email" class="form-control" value="{{ $empleado->user->email }}" required></div>
-        <div class="col-md-6"><label class="form-label">Teléfono</label><input name="telefono" class="form-control" value="{{ $empleado->telefono }}"></div>
-        <div class="col-md-6"><label class="form-label">Dirección</label><input name="direccion" class="form-control" value="{{ $empleado->direccion }}"></div>
+        <div class="col-md-6">
+          <label class="form-label">Nombre <span class="text-danger">*</span></label>
+          <input name="nombre" class="form-control @error('nombre') is-invalid @enderror" 
+                 value="{{ old('nombre', $empleado->user->name) }}" required>
+          @error('nombre')
+            <div class="invalid-feedback">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Email <span class="text-danger">*</span></label>
+          <input name="email" type="email" class="form-control @error('email') is-invalid @enderror" 
+                 value="{{ old('email', $empleado->user->email) }}" required>
+          @error('email')
+            <div class="invalid-feedback">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Teléfono</label>
+          <input name="telefono" class="form-control @error('telefono') is-invalid @enderror" 
+                 value="{{ old('telefono', $empleado->telefono) }}">
+          @error('telefono')
+            <div class="invalid-feedback">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Dirección</label>
+          <input name="direccion" class="form-control @error('direccion') is-invalid @enderror" 
+                 value="{{ old('direccion', $empleado->direccion) }}">
+          @error('direccion')
+            <div class="invalid-feedback">{{ $message }}</div>
+          @enderror
+        </div>
 
         <div class="col-12 d-flex justify-content-end gap-2">
           <a class="btn btn-light" href="{{ route('empleados.index') }}">Cancelar</a>

@@ -33,11 +33,20 @@ export interface ChecklistItem {
   completado: boolean;
 }
 
+export interface Origin {
+  lat: number;
+  lng: number;
+  name?: string;
+  address?: string;
+}
+
 export interface Assignment {
   id: number;
   estado: 'pendiente' | 'en_ruta' | 'entregado' | 'devuelto';
   asignado_at: string;
   salida_at: string | null;
+  entregado_at?: string | null;
+  origen?: Origin;
   pedido: Pedido;
 }
 

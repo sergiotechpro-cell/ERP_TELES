@@ -109,10 +109,35 @@ export default function PedidoDetailPage() {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Mapa */}
+          {/* Mapa con ruta completa */}
           {assignment.pedido.lat && assignment.pedido.lng && (
             <div className="mb-6">
-              <MapComponent lat={assignment.pedido.lat} lng={assignment.pedido.lng} />
+              <div className="mb-2">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center">
+                  <span className="mr-2">🗺️</span>
+                  Ruta de Entrega
+                </h3>
+                {assignment.origen && (
+                  <div className="text-xs text-gray-600 mb-2">
+                    Desde: <strong>{assignment.origen.name || 'Bodega Principal'}</strong>
+                    {assignment.origen.lat && assignment.origen.lng && (
+                      <span className="text-gray-500 ml-2">
+                        ({assignment.origen.lat.toFixed(4)}, {assignment.origen.lng.toFixed(4)})
+                      </span>
+                    )}
+                  </div>
+                )}
+                {!assignment.origen && (
+                  <div className="text-xs text-yellow-600 mb-2">
+                    ⚠️ No se encontró información del origen (bodega)
+                  </div>
+                )}
+              </div>
+              <MapComponent 
+                lat={assignment.pedido.lat} 
+                lng={assignment.pedido.lng}
+                origen={assignment.origen || undefined}
+              />
               <div className="mt-4 text-center">
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${assignment.pedido.lat},${assignment.pedido.lng}`}
@@ -123,7 +148,7 @@ export default function PedidoDetailPage() {
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
-                  Iniciar Navegación
+                  Abrir en Google Maps
                 </a>
               </div>
             </div>

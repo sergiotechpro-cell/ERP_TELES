@@ -21,22 +21,45 @@ class EmployeeController extends Controller
 
     public function store(Request $r)
     {
+        $validated = $r->validate([
+            'nombre' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'telefono' => ['nullable', 'string', 'max:50'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+        ], [
+            'email.unique' => 'El email ya está registrado. Por favor, usa otro email.',
+            'email.email' => 'El email debe ser una dirección de correo válida.',
+        ]);
+
+        $password = '12345678'; // Contraseña por defecto
+        
         $user = User::create([
-            'name'=>$r->nombre,
-            'email'=>$r->email,
-            'password'=>bcrypt('12345678'),
+            'name' => $validated['nombre'],
+            'email' => $validated['email'],
+            'password' => bcrypt($password),
         ]);
 
         EmployeeProfile::create([
-            'user_id'=>$user->id,
-            'telefono'=>$r->telefono,
-            'direccion'=>$r->direccion,
+            'user_id' => $user->id,
+            'telefono' => $validated['telefono'] ?? null,
+            'direccion' => $validated['direccion'] ?? null,
         ]);
-        return redirect()->route('empleados.index')->with('ok','Empleado creado.');
+        
+        // Mostrar credenciales en el mensaje
+        $credenciales = [
+            'email' => $validated['email'],
+            'password' => $password,
+        ];
+        
+        return redirect()
+            ->route('empleados.index')
+            ->with('ok', 'Empleado creado exitosamente.')
+            ->with('credenciales', $credenciales);
     }
 
     public function show(EmployeeProfile $empleado)
     {
+        $empleado->load('user');
         return view('empleados.show', compact('empleado'));
     }
 
@@ -47,8 +70,26 @@ class EmployeeController extends Controller
 
     public function update(Request $r, EmployeeProfile $empleado)
     {
-        $empleado->update($r->only(['telefono','direccion']));
-        $empleado->user->update(['name'=>$r->nombre,'email'=>$r->email]);
+        $validated = $r->validate([
+            'nombre' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $empleado->user_id],
+            'telefono' => ['nullable', 'string', 'max:50'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+        ], [
+            'email.unique' => 'El email ya está registrado por otro usuario. Por favor, usa otro email.',
+            'email.email' => 'El email debe ser una dirección de correo válida.',
+        ]);
+
+        $empleado->update([
+            'telefono' => $validated['telefono'] ?? null,
+            'direccion' => $validated['direccion'] ?? null,
+        ]);
+        
+        $empleado->user->update([
+            'name' => $validated['nombre'],
+            'email' => $validated['email'],
+        ]);
+        
         return redirect()->route('empleados.index')->with('ok','Empleado actualizado.');
     }
 

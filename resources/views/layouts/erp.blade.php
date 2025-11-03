@@ -267,6 +267,13 @@
             </div>
 
             <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('bodegas.*') ? 'active' : '' }}" href="{{ route('bodegas.index') }}">
+                    <i class="bi bi-building"></i> 
+                    <span>Bodegas</span>
+                </a>
+            </div>
+
+            <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('clientes.*') ? 'active' : '' }}" href="{{ route('clientes.index') }}">
                     <i class="bi bi-people"></i> 
                     <span>Clientes</span>

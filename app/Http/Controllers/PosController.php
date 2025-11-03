@@ -8,6 +8,7 @@ use App\Models\SaleItem;
 use App\Models\Payment;
 use App\Models\ChecklistItem;
 use App\Models\Customer;
+use App\Models\DeliveryAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,12 +17,29 @@ class PosController extends Controller
 {
     public function index()
 {
-    // Productos para el POS
-    $productos = \App\Models\Product::orderBy('descripcion')
+    // Validar elementos necesarios
+    $productos = \App\Models\Product::with('warehouses')
+        ->orderBy('descripcion')
         ->get(['id','descripcion','precio_venta','precio_mayoreo','costo_unitario','price_tier']);
-
-    // Clientes para selección
+    
+    // Calcular stock total para cada producto
+    $productos = $productos->map(function($p) {
+        $p->stock_total = $p->warehouses->sum(fn($w) => $w->pivot->stock ?? 0);
+        return $p;
+    });
+    
     $clientes = Customer::orderBy('nombre')->get(['id','nombre','telefono','email']);
+    $bodegas = \App\Models\Warehouse::orderBy('nombre')->get(['id','nombre']);
+    
+    // Verificar choferes (usuarios con EmployeeProfile)
+    $choferes = \App\Models\User::whereHas('employeeProfile')->get(['id','name','email']);
+    
+    // Variables de validación para mostrar alertas
+    $hasProductos = $productos->count() > 0;
+    $hasClientes = $clientes->count() > 0;
+    $hasBodegas = $bodegas->count() > 0;
+    $hasChoferes = $choferes->count() > 0;
+    $canProceed = $hasProductos && $hasBodegas; // Cliente y chofer son opcionales pero recomendados
 
     // Ventas recientes (últimas 15)
     $ventas = \App\Models\Sale::latest()
@@ -40,7 +58,6 @@ class PosController extends Controller
 
     // Variables para entrega a domicilio
     $mapsKey = config('services.google.maps_key');
-    $bodegas = \App\Models\Warehouse::orderBy('nombre')->get(['id','nombre']);
     
     // Obtener coordenadas de origen desde bodega principal
     $warehouse = \App\Models\Warehouse::whereNotNull('lat')
@@ -56,16 +73,38 @@ class PosController extends Controller
         $originLng = (float) (env('WAREHOUSE_ORIGIN_LNG', -99.133209));
     }
 
-    return view('pos.index', compact('productos','clientes','ventas','totalesHoy','conteoHoy','mapsKey','bodegas','originLat','originLng','pedidosEntrega'));
+    return view('pos.index', compact(
+        'productos','clientes','ventas','totalesHoy','conteoHoy','mapsKey','bodegas',
+        'originLat','originLng','pedidosEntrega','choferes',
+        'hasProductos','hasClientes','hasBodegas','hasChoferes','canProceed'
+    ));
 }
 
 
     public function store(Request $r)
 {
+    // Validar elementos necesarios antes de proceder
+    $productosCount = \App\Models\Product::count();
+    $bodegasCount = \App\Models\Warehouse::count();
+    $choferesCount = \App\Models\User::whereHas('employeeProfile')->count();
+    
+    if ($productosCount === 0) {
+        return back()->withErrors(['error' => 'No hay productos registrados. Debes crear al menos un producto primero.'])->withInput();
+    }
+    
+    if ($bodegasCount === 0) {
+        return back()->withErrors(['error' => 'No hay bodegas registradas. Debes crear al menos una bodega primero.'])->withInput();
+    }
+    
     $tipoVenta = $r->input('tipo_venta');
     
     // Si es entrega a domicilio, crear pedido
     if ($tipoVenta === 'entrega') {
+        // Para entregas, es recomendable tener choferes
+        if ($choferesCount === 0) {
+            return back()->withErrors(['error' => 'No hay choferes registrados. Debes crear al menos un empleado chofer primero.'])->withInput();
+        }
+        
         $data = $r->validate([
             'forma_pago'               => ['required','in:efectivo,transferencia'],
             'subtotal'                 => ['required','numeric','min:0'],
@@ -73,6 +112,7 @@ class PosController extends Controller
             'costo_envio'              => ['nullable','numeric','min:0'],
             'cliente_nombre'           => ['nullable','string','max:255'],
             'cliente_telefono'         => ['nullable','string','max:50'],
+            'courier_id'               => ['nullable','integer','exists:users,id'],
             'lat'                      => ['nullable','numeric'],
             'lng'                      => ['nullable','numeric'],
             'items'                    => ['required','array','min:1'],
@@ -87,7 +127,7 @@ class PosController extends Controller
             return back()->withErrors(['error' => 'No hay bodegas registradas. Debes crear al menos una bodega primero.'])->withInput();
         }
 
-        DB::transaction(function() use ($data, $primeraBodega, &$pedidoId) {
+        DB::transaction(function() use ($data, $primeraBodega, &$pedidoId, &$choferAsignado) {
             $pedido = \App\Models\Order::create([
                 'customer_id'       => null,
                 'created_by'        => Auth::id(),
@@ -101,20 +141,47 @@ class PosController extends Controller
 
             $totalPedido = 0;
             foreach ($data['items'] as $it) {
-                $prod = \App\Models\Product::select('id','costo_unitario')->find($it['product_id']);
-                $costo = $prod?->costo_unitario ?? 0;
+                $prod = \App\Models\Product::with('warehouses')->find($it['product_id']);
+                if (!$prod) {
+                    throw new \Exception("Producto no encontrado: {$it['product_id']}");
+                }
                 
-                $subtotal = (float) $it['precio_unitario'] * (int) $it['cantidad'];
+                // Calcular stock disponible
+                $stockDisponible = $prod->warehouses->sum(fn($w) => $w->pivot->stock ?? 0);
+                $cantidadSolicitada = (int) $it['cantidad'];
+                
+                if ($cantidadSolicitada > $stockDisponible) {
+                    throw new \Exception("Stock insuficiente para {$prod->descripcion}. Disponible: {$stockDisponible}, Solicitado: {$cantidadSolicitada}");
+                }
+                
+                $costo = $prod->costo_unitario ?? 0;
+                $subtotal = (float) $it['precio_unitario'] * $cantidadSolicitada;
                 $totalPedido += $subtotal;
 
                 \App\Models\OrderItem::create([
                     'order_id'        => $pedido->id,
                     'product_id'      => $it['product_id'],
                     'warehouse_id'    => $primeraBodega->id,
-                    'cantidad'        => (int) $it['cantidad'],
+                    'cantidad'        => $cantidadSolicitada,
                     'precio_unitario' => (float) $it['precio_unitario'],
                     'costo_unitario'  => (float) $costo,
                 ]);
+                
+                // Descontar stock del inventario
+                $cantidadRestante = $cantidadSolicitada;
+                foreach ($prod->warehouses as $warehouse) {
+                    if ($cantidadRestante <= 0) break;
+                    
+                    $stockActual = $warehouse->pivot->stock ?? 0;
+                    if ($stockActual > 0) {
+                        $cantidadADescontar = min($stockActual, $cantidadRestante);
+                        DB::table('warehouse_product')
+                            ->where('warehouse_id', $warehouse->id)
+                            ->where('product_id', $prod->id)
+                            ->decrement('stock', $cantidadADescontar);
+                        $cantidadRestante -= $cantidadADescontar;
+                    }
+                }
                 
                 // Crear checklist automático por producto
                 ChecklistItem::create([
@@ -137,9 +204,26 @@ class PosController extends Controller
                 'estado'      => 'en_caja',
                 'reportado_at' => now(),
             ]);
+            
+            // Asignar chofer si se proporcionó
+            $choferAsignado = false;
+            if (!empty($data['courier_id']) && \App\Models\User::whereHas('employeeProfile')->where('id', $data['courier_id'])->exists()) {
+                DeliveryAssignment::create([
+                    'order_id' => $pedido->id,
+                    'courier_id' => $data['courier_id'],
+                    'asignado_at' => now(),
+                    'estado' => 'pendiente'
+                ]);
+                $pedido->update(['estado' => 'asignado']);
+                $choferAsignado = true;
+            }
         });
 
-        return redirect()->route('rutas.index')->with('ok', 'Pedido de entrega creado (#'.$pedidoId.'). Ahora puedes planificar la ruta.');
+        $mensaje = $choferAsignado 
+            ? "Pedido de entrega creado (#{$pedidoId}) con chofer asignado. Ya aparece en el calendario."
+            : "Pedido de entrega creado (#{$pedidoId}). Asigna un chofer desde el módulo de pedidos para planificar la ruta.";
+        
+        return redirect()->route('rutas.index')->with('ok', $mensaje);
     }
 
     // Si es mostrador, crear venta normal
@@ -165,17 +249,45 @@ class PosController extends Controller
         $saleId = $sale->id;
 
         foreach ($data['items'] as $it) {
-            // Trae el costo del producto desde BD (no del cliente)
-            $prod = \App\Models\Product::select('id','costo_unitario')->find($it['product_id']);
-            $costo = $prod?->costo_unitario ?? 0;
+            // Trae el producto con stock
+            $prod = \App\Models\Product::with('warehouses')->find($it['product_id']);
+            if (!$prod) {
+                throw new \Exception("Producto no encontrado: {$it['product_id']}");
+            }
+            
+            // Validar stock disponible
+            $stockDisponible = $prod->warehouses->sum(fn($w) => $w->pivot->stock ?? 0);
+            $cantidadSolicitada = (int) $it['cantidad'];
+            
+            if ($cantidadSolicitada > $stockDisponible) {
+                throw new \Exception("Stock insuficiente para {$prod->descripcion}. Disponible: {$stockDisponible}, Solicitado: {$cantidadSolicitada}");
+            }
+            
+            $costo = $prod->costo_unitario ?? 0;
 
             SaleItem::create([
                 'sale_id'         => $sale->id,
                 'product_id'      => $it['product_id'],
-                'cantidad'        => $it['cantidad'],
+                'cantidad'        => $cantidadSolicitada,
                 'precio_unitario' => $it['precio_unitario'],
-                'costo_unitario'  => $costo, // <-- CLAVE: evita el NOT NULL
+                'costo_unitario'  => $costo,
             ]);
+            
+            // Descontar stock del inventario
+            $cantidadRestante = $cantidadSolicitada;
+            foreach ($prod->warehouses as $warehouse) {
+                if ($cantidadRestante <= 0) break;
+                
+                $stockActual = $warehouse->pivot->stock ?? 0;
+                if ($stockActual > 0) {
+                    $cantidadADescontar = min($stockActual, $cantidadRestante);
+                    DB::table('warehouse_product')
+                        ->where('warehouse_id', $warehouse->id)
+                        ->where('product_id', $prod->id)
+                        ->decrement('stock', $cantidadADescontar);
+                    $cantidadRestante -= $cantidadADescontar;
+                }
+            }
         }
         
         // Crear pago automáticamente para la venta (mapear forma_pago al enum de payments)
