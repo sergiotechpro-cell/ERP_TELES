@@ -109,16 +109,27 @@ class PosController extends Controller
             'forma_pago'               => ['required','in:efectivo,transferencia'],
             'subtotal'                 => ['required','numeric','min:0'],
             'direccion_entrega'        => ['required','string','max:255'],
-            'costo_envio'              => ['nullable','numeric','min:0'],
-            'cliente_nombre'           => ['nullable','string','max:255'],
-            'cliente_telefono'         => ['nullable','string','max:50'],
-            'courier_id'               => ['nullable','integer','exists:users,id'],
-            'lat'                      => ['nullable','numeric'],
-            'lng'                      => ['nullable','numeric'],
+            'costo_envio'              => ['required','numeric','min:0'],
+            'cliente_nombre'           => ['required_without:customer_id','string','max:255'],
+            'cliente_telefono'         => ['required_without:customer_id','string','max:50'],
+            'courier_id'               => ['required','integer','exists:users,id'],
+            'lat'                      => ['required','numeric'],
+            'lng'                      => ['required','numeric'],
             'items'                    => ['required','array','min:1'],
             'items.*.product_id'       => ['required','integer','exists:products,id'],
             'items.*.cantidad'         => ['required','integer','min:1'],
             'items.*.precio_unitario'  => ['required','numeric','min:0'],
+        ], [
+            'direccion_entrega.required' => 'La dirección de entrega es obligatoria.',
+            'costo_envio.required' => 'El costo de envío es obligatorio.',
+            'cliente_nombre.required_without' => 'El nombre del cliente es obligatorio si no seleccionas un cliente existente.',
+            'cliente_telefono.required_without' => 'El teléfono del cliente es obligatorio si no seleccionas un cliente existente.',
+            'courier_id.required' => 'El chofer es obligatorio para entregas a domicilio.',
+            'courier_id.exists' => 'El chofer seleccionado no es válido.',
+            'lat.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida.',
+            'lng.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida.',
+            'items.required' => 'Debes agregar al menos un producto.',
+            'items.min' => 'Debes agregar al menos un producto.',
         ]);
 
         // Obtener primera bodega disponible para asignar productos
@@ -205,9 +216,8 @@ class PosController extends Controller
                 'reportado_at' => now(),
             ]);
             
-            // Asignar chofer si se proporcionó
-            $choferAsignado = false;
-            if (!empty($data['courier_id']) && \App\Models\User::whereHas('employeeProfile')->where('id', $data['courier_id'])->exists()) {
+            // Asignar chofer (obligatorio)
+            if (\App\Models\User::whereHas('employeeProfile')->where('id', $data['courier_id'])->exists()) {
                 DeliveryAssignment::create([
                     'order_id' => $pedido->id,
                     'courier_id' => $data['courier_id'],
@@ -215,13 +225,10 @@ class PosController extends Controller
                     'estado' => 'pendiente'
                 ]);
                 $pedido->update(['estado' => 'asignado']);
-                $choferAsignado = true;
             }
         });
 
-        $mensaje = $choferAsignado 
-            ? "Pedido de entrega creado (#{$pedidoId}) con chofer asignado. Ya aparece en el calendario."
-            : "Pedido de entrega creado (#{$pedidoId}). Asigna un chofer desde el módulo de pedidos para planificar la ruta.";
+        $mensaje = "Pedido de entrega creado (#{$pedidoId}) con chofer asignado. Ya aparece en el calendario.";
         
         return redirect()->route('rutas.index')->with('ok', $mensaje);
     }

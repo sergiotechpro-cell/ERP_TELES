@@ -25,7 +25,27 @@ use App\Http\Controllers\{
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', fn () => redirect()->route('dashboard'));
+Route::get('/', function () {
+    if (auth()->check()) {
+        // Si el usuario tiene permiso para ver dashboard, redirigir ahí
+        if (auth()->user()->can('ver-dashboard')) {
+            return redirect()->route('dashboard');
+        }
+        // Si no, redirigir al primer módulo al que tenga acceso
+        if (auth()->user()->can('ver-pedidos')) {
+            return redirect()->route('pedidos.index');
+        }
+        if (auth()->user()->can('ver-inventario')) {
+            return redirect()->route('inventario.index');
+        }
+        if (auth()->user()->can('ver-pos')) {
+            return redirect()->route('pos.index');
+        }
+        // Si no tiene ningún permiso, redirigir a login
+        return redirect()->route('login');
+    }
+    return redirect()->route('login');
+});
 
 // Rutas de autenticación de Breeze (login, logout, register, etc.)
 require __DIR__ . '/auth.php';
@@ -33,7 +53,9 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth'])->group(function () {
 
     // ================== DASHBOARD ==================
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('permission:ver-dashboard')
+        ->name('dashboard');
 
     // ================== BODEGAS ==================
     Route::resource('bodegas', WarehouseController::class);
@@ -69,9 +91,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/calendario', [ScheduleController::class, 'store'])->name('calendario.store');
 
     // ================== FINANZAS ==================
-    Route::get('/finanzas', [FinanceController::class, 'index'])->name('finanzas.index');
-    Route::get('/finanzas/cierre-diario', [FinanceController::class, 'showDaily'])->name('finanzas.cierre-diario');
-    Route::post('/finanzas/cierre-diario', [FinanceController::class, 'dailyClose'])->name('finanzas.dailyClose');
+    Route::middleware('permission:ver-finanzas')->group(function () {
+        Route::get('/finanzas', [FinanceController::class, 'index'])->name('finanzas.index');
+        Route::get('/finanzas/cierre-diario', [FinanceController::class, 'showDaily'])->name('finanzas.cierre-diario');
+        Route::post('/finanzas/cierre-diario', [FinanceController::class, 'dailyClose'])->name('finanzas.dailyClose');
+    });
     // (opcional) cierre semanal
     // Route::get('/finanzas/cierre-semanal', [FinanceController::class,'showWeekly'])->name('finanzas.cierre-semanal');
     // Route::post('/finanzas/cierre-semanal', [FinanceController::class,'weeklyClose'])->name('finanzas.weeklyClose');

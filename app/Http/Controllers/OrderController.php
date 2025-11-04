@@ -127,19 +127,30 @@ class OrderController extends Controller
         $data = $r->validate([
             'customer_id'       => ['nullable','integer','exists:customers,id'],
             'direccion_entrega' => ['required','string','max:255'],
-            'costo_envio'       => ['nullable','numeric','min:0'],
-            'cliente_nombre'    => ['nullable','string','max:255'],
-            'cliente_telefono'  => ['nullable','string','max:50'],
-            'courier_id'        => ['nullable','integer','exists:users,id'],
-            'lat'               => ['nullable','numeric'],
-            'lng'               => ['nullable','numeric'],
+            'costo_envio'       => ['required','numeric','min:0'],
+            'cliente_nombre'    => ['required_without:customer_id','string','max:255'],
+            'cliente_telefono'  => ['required_without:customer_id','string','max:50'],
+            'courier_id'        => ['required','integer','exists:users,id'],
+            'lat'               => ['required','numeric'],
+            'lng'               => ['required','numeric'],
 
             'productos'               => ['required','array','min:1'],
             'productos.*.id'          => ['required','exists:products,id'],
             'productos.*.bodega_id'   => ['required','exists:warehouses,id'],
             'productos.*.cantidad'    => ['required','integer','min:1'],
             'productos.*.precio'      => ['required','numeric','min:0'],
-            'productos.*.costo'       => ['nullable','numeric','min:0'],
+            'productos.*.costo'       => ['required','numeric','min:0'],
+        ], [
+            'direccion_entrega.required' => 'La dirección de entrega es obligatoria.',
+            'costo_envio.required' => 'El costo de envío es obligatorio.',
+            'cliente_nombre.required_without' => 'El nombre del cliente es obligatorio si no seleccionas un cliente existente.',
+            'cliente_telefono.required_without' => 'El teléfono del cliente es obligatorio si no seleccionas un cliente existente.',
+            'courier_id.required' => 'El chofer es obligatorio. Debes seleccionar un chofer para el pedido.',
+            'courier_id.exists' => 'El chofer seleccionado no es válido.',
+            'lat.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida.',
+            'lng.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida.',
+            'productos.required' => 'Debes agregar al menos un producto al pedido.',
+            'productos.min' => 'Debes agregar al menos un producto al pedido.',
         ]);
 
         // Obtener primera bodega disponible para asignar productos
@@ -204,9 +215,8 @@ class OrderController extends Controller
                 ]);
             }
             
-            // Asignar chofer si se proporcionó
-            $choferAsignado = false;
-            if (!empty($data['courier_id']) && \App\Models\User::whereHas('employeeProfile')->where('id', $data['courier_id'])->exists()) {
+            // Asignar chofer (obligatorio)
+            if (\App\Models\User::whereHas('employeeProfile')->where('id', $data['courier_id'])->exists()) {
                 DeliveryAssignment::create([
                     'order_id' => $pedido->id,
                     'courier_id' => $data['courier_id'],
@@ -214,13 +224,10 @@ class OrderController extends Controller
                     'estado' => 'pendiente'
                 ]);
                 $pedido->update(['estado' => 'asignado']);
-                $choferAsignado = true;
             }
         });
 
-        $mensaje = isset($choferAsignado) && $choferAsignado 
-            ? "Pedido creado (#{$pedidoId}) con chofer asignado. Ya aparece en el calendario."
-            : "Pedido creado (#{$pedidoId}). Asigna un chofer desde el detalle del pedido para planificar la ruta.";
+        $mensaje = "Pedido creado (#{$pedidoId}) con chofer asignado. Ya aparece en el calendario.";
         
         return redirect()->route('pedidos.index')->with('ok', $mensaje);
     }
@@ -237,8 +244,23 @@ class OrderController extends Controller
 
     public function update(Request $r, Order $pedido)
     {
-        $pedido->update($r->only(['estado']));
-        return back()->with('ok', 'Estado de pedido actualizado.');
+        $validated = $r->validate([
+            'estado' => [
+                'required',
+                'in:capturado,preparacion,asignado,en_ruta,entregado,entregado_pendiente_pago,finalizado,cancelado'
+            ]
+        ]);
+
+        $pedido->update($validated);
+        
+        $mensaje = 'Estado de pedido actualizado.';
+        
+        // Si el estado es finalizado, informar que el dinero se reflejó en finanzas
+        if ($validated['estado'] === 'finalizado') {
+            $mensaje = 'Estado de pedido actualizado a finalizado. El dinero se ha reflejado en el sistema de finanzas.';
+        }
+        
+        return back()->with('ok', $mensaje);
     }
 
     public function toggleChecklist(Request $r, Order $pedido, ChecklistItem $item)

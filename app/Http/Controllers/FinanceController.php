@@ -87,44 +87,111 @@ class FinanceController extends Controller
         $pagosUltimos7 = Payment::where('created_at','>=',now()->subDays(7))->count();
         $ventasPosRecientes = Sale::latest()->limit(5)->get();
         
-        // Totales de pagos (últimos 7 días y hoy) - considerar todos los estados excepto cancelados
-        $totalPagosHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
+        // Totales de pagos - usar entregado_caja_at si existe, sino created_at
+        // HOY: pagos completados hoy o creados hoy
+        $totalPagosHoy = (float) (Payment::where(function($q) {
+                $q->whereDate('entregado_caja_at', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereDate('created_at', now()->toDateString())
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
             
-        $totalPagos7Dias = (float) (Payment::where('created_at','>=',now()->subDays(7))
+        // ÚLTIMOS 7 DÍAS: usar entregado_caja_at si existe, sino created_at
+        $totalPagos7Dias = (float) (Payment::where(function($q) {
+                $q->where('entregado_caja_at', '>=', now()->subDays(7))
+                  ->orWhere(function($q2) {
+                      $q2->where('created_at', '>=', now()->subDays(7))
+                         ->whereNull('entregado_caja_at')
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
+            ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
+            ->sum('monto') ?? 0);
+            
+        // ESTE MES: usar entregado_caja_at si existe, sino created_at
+        $totalPagosEsteMes = (float) (Payment::where(function($q) {
+                $q->whereYear('entregado_caja_at', now()->year)
+                  ->whereMonth('entregado_caja_at', now()->month)
+                  ->orWhere(function($q2) {
+                      $q2->whereYear('created_at', now()->year)
+                         ->whereMonth('created_at', now()->month)
+                         ->whereNull('entregado_caja_at')
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
         
-        // Totales por método de pago (hoy) - solo pagos válidos
-        $totalEfectivoHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
+        // Totales por método de pago (hoy) - pagos completados hoy o creados hoy
+        $totalEfectivoHoy = (float) (Payment::where(function($q) {
+                $q->whereDate('entregado_caja_at', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereDate('created_at', now()->toDateString())
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->where('forma_pago', 'efectivo')
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
         
-        $totalTransferenciaHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
+        $totalTransferenciaHoy = (float) (Payment::where(function($q) {
+                $q->whereDate('entregado_caja_at', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereDate('created_at', now()->toDateString())
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->where('forma_pago', 'transferencia')
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
         
-        // Totales por método de pago (últimos 7 días) - solo pagos válidos
-        $totalEfectivo7Dias = (float) (Payment::where('created_at','>=',now()->subDays(7))
+        // Totales por método de pago (últimos 7 días) - usar entregado_caja_at si existe
+        $totalEfectivo7Dias = (float) (Payment::where(function($q) {
+                $q->where('entregado_caja_at', '>=', now()->subDays(7))
+                  ->orWhere(function($q2) {
+                      $q2->where('created_at', '>=', now()->subDays(7))
+                         ->whereNull('entregado_caja_at')
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->where('forma_pago', 'efectivo')
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
         
-        $totalTransferencia7Dias = (float) (Payment::where('created_at','>=',now()->subDays(7))
+        $totalTransferencia7Dias = (float) (Payment::where(function($q) {
+                $q->where('entregado_caja_at', '>=', now()->subDays(7))
+                  ->orWhere(function($q2) {
+                      $q2->where('created_at', '>=', now()->subDays(7))
+                         ->whereNull('entregado_caja_at')
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->where('forma_pago', 'transferencia')
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
         
-        // Contar pagos por método (hoy) - solo pagos válidos
-        $countEfectivoHoy = (int) (Payment::whereDate('created_at', now()->toDateString())
+        // Contar pagos por método (hoy) - pagos completados hoy o creados hoy
+        $countEfectivoHoy = (int) (Payment::where(function($q) {
+                $q->whereDate('entregado_caja_at', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereDate('created_at', now()->toDateString())
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->where('forma_pago', 'efectivo')
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->count() ?? 0);
         
-        $countTransferenciaHoy = (int) (Payment::whereDate('created_at', now()->toDateString())
+        $countTransferenciaHoy = (int) (Payment::where(function($q) {
+                $q->whereDate('entregado_caja_at', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereDate('created_at', now()->toDateString())
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->where('forma_pago', 'transferencia')
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->count() ?? 0);
@@ -136,6 +203,7 @@ class FinanceController extends Controller
             'pagosUltimos7',
             'totalPagosHoy',
             'totalPagos7Dias',
+            'totalPagosEsteMes',
             'totalEfectivoHoy',
             'totalTransferenciaHoy',
             'totalEfectivo7Dias',

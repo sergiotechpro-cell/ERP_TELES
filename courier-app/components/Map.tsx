@@ -260,8 +260,8 @@ export default function MapComponent({ lat, lng, origen }: MapProps) {
     // Crear y cargar el script con callback (igual que en el ERP)
     // IMPORTANTE: El callback se ejecuta DESPUÉS de que todas las librerías están cargadas
     const script = document.createElement('script');
-    // Volver a usar places,directions como funcionaba antes
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,directions&v=weekly&callback=${callbackName}`;
+    // DirectionsService y DirectionsRenderer están incluidos en la librería principal, no necesitan librería separada
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&callback=${callbackName}`;
     script.async = true;
     script.defer = false; // NO usar defer - necesitamos que el callback esté disponible inmediatamente
     script.id = 'google-maps-script';

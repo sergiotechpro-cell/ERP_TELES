@@ -24,11 +24,15 @@ class EmployeeController extends Controller
         $validated = $r->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'direccion' => ['nullable', 'string', 'max:255'],
+            'telefono' => ['required', 'string', 'max:50'],
+            'direccion' => ['required', 'string', 'max:255'],
         ], [
+            'nombre.required' => 'El nombre del empleado es obligatorio.',
+            'email.required' => 'El email es obligatorio.',
             'email.unique' => 'El email ya está registrado. Por favor, usa otro email.',
             'email.email' => 'El email debe ser una dirección de correo válida.',
+            'telefono.required' => 'El teléfono es obligatorio.',
+            'direccion.required' => 'La dirección es obligatoria.',
         ]);
 
         $password = '12345678'; // Contraseña por defecto
@@ -73,11 +77,15 @@ class EmployeeController extends Controller
         $validated = $r->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $empleado->user_id],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'direccion' => ['nullable', 'string', 'max:255'],
+            'telefono' => ['required', 'string', 'max:50'],
+            'direccion' => ['required', 'string', 'max:255'],
         ], [
+            'nombre.required' => 'El nombre del empleado es obligatorio.',
+            'email.required' => 'El email es obligatorio.',
             'email.unique' => 'El email ya está registrado por otro usuario. Por favor, usa otro email.',
             'email.email' => 'El email debe ser una dirección de correo válida.',
+            'telefono.required' => 'El teléfono es obligatorio.',
+            'direccion.required' => 'La dirección es obligatoria.',
         ]);
 
         $empleado->update([

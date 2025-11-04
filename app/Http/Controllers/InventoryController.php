@@ -40,11 +40,21 @@ class InventoryController extends Controller
             'descripcion'      => ['required','string','max:255'],
             'costo_unitario'   => ['required','numeric','min:0'],
             'precio_venta'     => ['required','numeric','min:0'],
-            'precio_mayoreo'   => ['nullable','numeric','min:0'],
-            'price_tier'       => ['nullable','in:menudeo,mayoreo'],
-            'almacenes'        => ['nullable','array'],
-            'almacenes.*.warehouse_id' => ['required_with:almacenes','exists:warehouses,id'],
-            'almacenes.*.cantidad'     => ['required_with:almacenes','integer','min:1'],
+            'precio_mayoreo'   => ['required','numeric','min:0'],
+            'price_tier'       => ['required','in:menudeo,mayoreo'],
+            'almacenes'        => ['required','array','min:1'],
+            'almacenes.*.warehouse_id' => ['required','exists:warehouses,id'],
+            'almacenes.*.cantidad'     => ['required','integer','min:1'],
+        ], [
+            'descripcion.required' => 'La descripción del producto es obligatoria.',
+            'costo_unitario.required' => 'El costo unitario es obligatorio.',
+            'precio_venta.required' => 'El precio de venta es obligatorio.',
+            'precio_mayoreo.required' => 'El precio de mayoreo es obligatorio.',
+            'price_tier.required' => 'Debes seleccionar el tipo de precio (menudeo o mayoreo).',
+            'almacenes.required' => 'Debes asignar el producto a al menos una bodega.',
+            'almacenes.min' => 'Debes asignar el producto a al menos una bodega.',
+            'almacenes.*.warehouse_id.required' => 'Debes seleccionar una bodega.',
+            'almacenes.*.cantidad.required' => 'La cantidad es obligatoria.',
         ]);
 
         DB::transaction(function () use ($data) {

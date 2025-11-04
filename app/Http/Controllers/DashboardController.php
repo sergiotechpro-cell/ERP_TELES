@@ -14,8 +14,11 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        // Ventas mensuales - solo pagos válidos
-        $ventasMensuales = Payment::selectRaw("DATE_TRUNC('month', created_at) as mes, SUM(monto) as total")
+        // Ventas mensuales - solo pagos válidos (usar entregado_caja_at si existe, sino created_at)
+        $ventasMensuales = Payment::selectRaw("
+                DATE_TRUNC('month', COALESCE(entregado_caja_at, created_at)) as mes, 
+                SUM(monto) as total
+            ")
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->groupBy('mes')
             ->orderBy('mes')
@@ -26,7 +29,15 @@ class DashboardController extends Controller
         $pedidos = Order::count();
         $clientes = Customer::count();
         $empleados = EmployeeProfile::count();
-        $ventasHoy = (float) (Payment::whereDate('created_at', now()->toDateString())
+        
+        // Ventas hoy: pagos completados hoy o creados hoy
+        $ventasHoy = (float) (Payment::where(function($q) {
+                $q->whereDate('entregado_caja_at', now()->toDateString())
+                  ->orWhere(function($q2) {
+                      $q2->whereDate('created_at', now()->toDateString())
+                         ->whereIn('estado', ['en_caja', 'depositado', 'completado']);
+                  });
+            })
             ->whereIn('estado', ['en_caja', 'depositado', 'completado'])
             ->sum('monto') ?? 0);
 
@@ -51,7 +62,8 @@ class DashboardController extends Controller
 
         // Estadísticas adicionales
         $pedidosPendientes = Order::whereIn('estado', ['capturado', 'preparacion', 'asignado', 'en_ruta'])->count();
-        $pedidosEntregados = Order::where('estado', 'entregado')->count();
+        $pedidosEntregados = Order::whereIn('estado', ['entregado', 'entregado_pendiente_pago', 'finalizado'])->count();
+        $pedidosFinalizados = Order::where('estado', 'finalizado')->count();
 
         return view('dashboard', compact(
             'ventasMensuales',
@@ -64,7 +76,8 @@ class DashboardController extends Controller
             'ventasRecientes',
             'pedidosRecientes',
             'pedidosPendientes',
-            'pedidosEntregados'
+            'pedidosEntregados',
+            'pedidosFinalizados'
         ));
     }
 }

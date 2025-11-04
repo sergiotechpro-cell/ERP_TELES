@@ -29,17 +29,17 @@
           @enderror
         </div>
         <div class="col-md-6">
-          <label class="form-label">Teléfono</label>
+          <label class="form-label">Teléfono <span class="text-danger">*</span></label>
           <input name="telefono" class="form-control @error('telefono') is-invalid @enderror" 
-                 value="{{ old('telefono', $empleado->telefono) }}">
+                 value="{{ old('telefono', $empleado->telefono) }}" required>
           @error('telefono')
             <div class="invalid-feedback">{{ $message }}</div>
           @enderror
         </div>
         <div class="col-md-6">
-          <label class="form-label">Dirección</label>
+          <label class="form-label">Dirección <span class="text-danger">*</span></label>
           <input name="direccion" class="form-control @error('direccion') is-invalid @enderror" 
-                 value="{{ old('direccion', $empleado->direccion) }}">
+                 value="{{ old('direccion', $empleado->direccion) }}" required>
           @error('direccion')
             <div class="invalid-feedback">{{ $message }}</div>
           @enderror

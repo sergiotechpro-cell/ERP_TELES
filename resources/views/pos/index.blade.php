@@ -148,12 +148,12 @@
             
             <div class="mb-3">
               <label class="form-label">Nombre de contacto (opcional)</label>
-              <input name="cliente_nombre" class="form-control" placeholder="Nombre del cliente">
+              <input name="cliente_nombre" id="cliente_nombre_pos" class="form-control" placeholder="Nombre del cliente">
             </div>
 
             <div class="mb-3">
               <label class="form-label">Teléfono (opcional)</label>
-              <input name="cliente_telefono" type="tel" class="form-control" placeholder="Teléfono de contacto">
+              <input name="cliente_telefono" id="cliente_telefono_pos" type="tel" class="form-control" placeholder="Teléfono de contacto">
             </div>
 
             <div class="mb-3">
@@ -166,9 +166,9 @@
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Chofer (opcional)</label>
-              <select name="courier_id" id="courier_id_pos" class="form-select">
-                <option value="">Sin asignar - Asignar después</option>
+              <label class="form-label">Chofer <span class="text-danger">*</span></label>
+              <select name="courier_id" id="courier_id_pos" class="form-select" required>
+                <option value="">Selecciona un chofer...</option>
                 @foreach($choferes ?? [] as $chofer)
                   <option value="{{ $chofer->id }}">
                     {{ $chofer->name }}
@@ -178,7 +178,7 @@
                   </option>
                 @endforeach
               </select>
-              <small class="text-secondary">Puedes asignar el chofer ahora o después desde el módulo de pedidos.</small>
+              <small class="text-secondary">El chofer es obligatorio para entregas a domicilio.</small>
             </div>
 
             <div class="row g-2 mb-3">
@@ -189,7 +189,7 @@
               </div>
               <div class="col-md-6">
                 <label class="form-label">Costo de envío</label>
-                <input name="costo_envio" id="costo_envio_pos" type="number" step="0.01" class="form-control" readonly value="0">
+                <input name="costo_envio" id="costo_envio_pos" type="number" step="0.01" class="form-control" required value="0" min="0">
               </div>
               <div class="col-12">
                 <button type="button" class="btn btn-outline-primary w-100" id="btnCalcEnvioPos">
@@ -426,8 +426,8 @@
   const btnText = document.getElementById('btnText');
   const direccionInput = document.getElementById('direccion_entrega_pos');
   const customerSelect = document.getElementById('customer_id');
-  const clienteNombreInput = document.querySelector('input[name="cliente_nombre"]');
-  const clienteTelefonoInput = document.querySelector('input[name="cliente_telefono"]');
+  const clienteNombreInput = document.getElementById('cliente_nombre_pos');
+  const clienteTelefonoInput = document.getElementById('cliente_telefono_pos');
   
   let autocomplete = null;
   let selectedPlace = null;
@@ -616,9 +616,12 @@
 
   // Manejar cambio de tipo de venta
   tipoVentaSelect.addEventListener('change', function() {
+    const courierSelect = document.getElementById('courier_id_pos');
+    
     if (this.value === 'entrega') {
       camposEntrega.classList.remove('d-none');
       direccionInput.setAttribute('required', 'required');
+      if (courierSelect) courierSelect.setAttribute('required', 'required');
       btnText.textContent = 'Crear pedido';
       
       // Si hay un cliente seleccionado, autocompletar dirección también
@@ -662,6 +665,8 @@
     } else {
       camposEntrega.classList.add('d-none');
       direccionInput.removeAttribute('required');
+      const courierSelect = document.getElementById('courier_id_pos');
+      if (courierSelect) courierSelect.removeAttribute('required');
       btnText.textContent = 'Cobrar';
     }
   });
@@ -933,6 +938,45 @@
 
   // Serializa items al enviar
   document.getElementById('posForm').addEventListener('submit', (e)=>{
+    // Si es venta con entrega, validar campos obligatorios
+    if (tipoVentaSelect?.value === 'entrega') {
+      // Validar coordenadas
+      const lat = document.getElementById('address_lat_pos')?.value;
+      const lng = document.getElementById('address_lng_pos')?.value;
+      
+      if (!lat || !lng) {
+        e.preventDefault();
+        alert('Debes seleccionar una dirección válida del autocompletado para obtener las coordenadas.');
+        direccionInput?.focus();
+        return false;
+      }
+      
+      // Validar cliente si no hay customer_id
+      const customerId = customerSelect?.value;
+      if (!customerId) {
+        if (!clienteNombreInput?.value?.trim()) {
+          e.preventDefault();
+          alert('El nombre del cliente es obligatorio cuando no seleccionas un cliente existente.');
+          clienteNombreInput?.focus();
+          return false;
+        }
+        if (!clienteTelefonoInput?.value?.trim()) {
+          e.preventDefault();
+          alert('El teléfono del cliente es obligatorio cuando no seleccionas un cliente existente.');
+          clienteTelefonoInput?.focus();
+          return false;
+        }
+      }
+      
+      // Validar chofer
+      const courierId = document.getElementById('courier_id_pos')?.value;
+      if (!courierId) {
+        e.preventDefault();
+        alert('El chofer es obligatorio para entregas a domicilio.');
+        document.getElementById('courier_id_pos')?.focus();
+        return false;
+      }
+    }
     // Validar stock antes de enviar
     let hasErrors = false;
     let errorMessages = [];

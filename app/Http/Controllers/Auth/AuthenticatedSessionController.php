@@ -29,6 +29,25 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = auth()->user();
+        
+        // Redirigir según permisos del usuario
+        if ($user->can('ver-dashboard')) {
+            return redirect()->intended(RouteServiceProvider::HOME);
+        }
+        
+        // Si no tiene permiso para dashboard, redirigir al primer módulo disponible
+        if ($user->can('ver-pedidos')) {
+            return redirect()->intended(route('pedidos.index'));
+        }
+        if ($user->can('ver-inventario')) {
+            return redirect()->intended(route('inventario.index'));
+        }
+        if ($user->can('ver-pos')) {
+            return redirect()->intended(route('pos.index'));
+        }
+        
+        // Fallback a dashboard (si no tiene permisos, mostrará error 403)
         return redirect()->intended(RouteServiceProvider::HOME);
     }
 

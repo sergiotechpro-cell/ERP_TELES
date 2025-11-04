@@ -22,7 +22,7 @@ class CourierController extends Controller
         ])
             ->where('courier_id', $user->id)
             ->whereIn('estado', ['pendiente', 'en_ruta'])
-            ->latest('asignado_at')
+            ->oldest('asignado_at') // Priorizar las rutas más antiguas
             ->get();
 
         return response()->json([
@@ -105,14 +105,9 @@ class CourierController extends Controller
             'entregado_at' => now(),
         ]);
 
+        // Actualizar el pedido a "entregado_pendiente_pago" (el admin puede cambiar después a "finalizado" desde el ERP)
         $assignment->order->update([
-            'estado' => 'entregado'
-        ]);
-
-        // Actualizar pagos del pedido a "completado"
-        $assignment->order->payments()->update([
-            'estado' => 'completado',
-            'entregado_caja_at' => now()
+            'estado' => 'entregado_pendiente_pago'
         ]);
 
         return response()->json([

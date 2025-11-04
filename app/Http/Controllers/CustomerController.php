@@ -23,9 +23,15 @@ class CustomerController extends Controller
         $data = $r->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'es_empresa' => ['nullable', 'boolean'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'direccion_entrega' => ['nullable', 'string', 'max:500'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'telefono' => ['required', 'string', 'max:50'],
+            'direccion_entrega' => ['required', 'string', 'max:500'],
+            'email' => ['required', 'email', 'max:255'],
+        ], [
+            'nombre.required' => 'El nombre del cliente es obligatorio.',
+            'telefono.required' => 'El teléfono es obligatorio.',
+            'direccion_entrega.required' => 'La dirección de entrega es obligatoria.',
+            'email.required' => 'El email es obligatorio.',
+            'email.email' => 'El email debe ser una dirección válida.',
         ]);
         
         Customer::create($data);
@@ -55,9 +61,15 @@ class CustomerController extends Controller
         $data = $r->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'es_empresa' => ['nullable', 'boolean'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'direccion_entrega' => ['nullable', 'string', 'max:500'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'telefono' => ['required', 'string', 'max:50'],
+            'direccion_entrega' => ['required', 'string', 'max:500'],
+            'email' => ['required', 'email', 'max:255'],
+        ], [
+            'nombre.required' => 'El nombre del cliente es obligatorio.',
+            'telefono.required' => 'El teléfono es obligatorio.',
+            'direccion_entrega.required' => 'La dirección de entrega es obligatoria.',
+            'email.required' => 'El email es obligatorio.',
+            'email.email' => 'El email debe ser una dirección válida.',
         ]);
         
         $cliente->update($data);

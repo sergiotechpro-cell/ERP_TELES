@@ -102,9 +102,10 @@
               @foreach($pedidosPorEstado as $estado => $cantidad)
                 <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
                   <span class="badge 
-                    @if($estado === 'entregado') bg-success
+                    @if($estado === 'entregado' || $estado === 'finalizado') bg-success
+                    @elseif($estado === 'entregado_pendiente_pago') bg-warning
                     @elseif($estado === 'en_ruta') bg-primary
-                    @elseif($estado === 'asignado') bg-warning
+                    @elseif($estado === 'asignado') bg-info
                     @elseif($estado === 'cancelado') bg-danger
                     @else bg-secondary
                     @endif
@@ -194,14 +195,7 @@
                       <td class="small">{{ $pedido->created_at->format('d/m/Y H:i') }}</td>
                       <td>{{ $pedido->customer->nombre ?? '—' }}</td>
                       <td>
-                        <span class="badge 
-                          @if($pedido->estado === 'entregado') bg-success
-                          @elseif($pedido->estado === 'en_ruta') bg-primary
-                          @elseif($pedido->estado === 'asignado') bg-warning
-                          @elseif($pedido->estado === 'cancelado') bg-danger
-                          @else bg-secondary
-                          @endif
-                        ">{{ $pedido->estado }}</span>
+                        <x-status-badge :status="$pedido->estado" />
                       </td>
                       <td class="text-end">
                         <a href="{{ route('pedidos.show', $pedido) }}" class="btn btn-sm btn-outline-primary">

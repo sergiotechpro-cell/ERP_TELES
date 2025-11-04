@@ -75,18 +75,39 @@
   
   {{-- Total General --}}
   <div class="row g-3 mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm" style="border-radius:16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
         <div class="card-body text-white">
-          <div class="row align-items-center">
-            <div class="col-md-8">
-              <div class="small opacity-75">Total ingresos hoy</div>
-              <div class="display-5 fw-bold">${{ number_format((float)($totalPagosHoy ?? 0), 2) }}</div>
-              <div class="small opacity-75 mt-2">Total últimos 7 días: ${{ number_format((float)($totalPagos7Dias ?? 0), 2) }}</div>
-            </div>
-            <div class="col-md-4 text-end">
-              <div class="display-1 opacity-25">💰</div>
-            </div>
+          <div class="small opacity-75">Total ingresos hoy</div>
+          <div class="display-6 fw-bold">${{ number_format((float)($totalPagosHoy ?? 0), 2) }}</div>
+          <div class="small opacity-75 mt-2">
+            @if($totalPagosHoy > 0)
+              <i class="bi bi-arrow-up"></i> {{ (int)($countEfectivoHoy ?? 0) + (int)($countTransferenciaHoy ?? 0) }} pago(s)
+            @else
+              Sin pagos hoy
+            @endif
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+        <div class="card-body text-white">
+          <div class="small opacity-75">Últimos 7 días</div>
+          <div class="display-6 fw-bold">${{ number_format((float)($totalPagos7Dias ?? 0), 2) }}</div>
+          <div class="small opacity-75 mt-2">
+            {{ (int)($pagosUltimos7 ?? 0) }} pago(s) registrado(s)
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+        <div class="card-body text-white">
+          <div class="small opacity-75">Este mes</div>
+          <div class="display-6 fw-bold">${{ number_format((float)($totalPagosEsteMes ?? 0), 2) }}</div>
+          <div class="small opacity-75 mt-2">
+            {{ now()->isoFormat('MMMM YYYY') }}
           </div>
         </div>
       </div>
@@ -97,10 +118,16 @@
   <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
     <div class="card-body">
       <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart-line me-2"></i>Ventas mensuales</h6>
-      <canvas id="ventasMensuales" height="120"></canvas>
-      <div class="small text-secondary mt-2">
-        Se muestran <strong>POS</strong> y <strong>Pedidos</strong>. Línea punteada: <em>utilidad POS</em>.
-      </div>
+      @if(($chartLabels && $chartLabels->count() > 0) || ($chartPOS && $chartPOS->count() > 0) || ($chartPedidos && $chartPedidos->count() > 0))
+        <canvas id="ventasMensuales" height="120"></canvas>
+        <div class="small text-secondary mt-2">
+          Se muestran <strong>POS</strong> y <strong>Pedidos</strong>. Línea punteada: <em>utilidad POS</em>.
+        </div>
+      @else
+        <div class="alert alert-info mb-0">
+          <i class="bi bi-info-circle"></i> No hay datos de ventas mensuales para mostrar aún. Los datos aparecerán cuando se registren ventas POS o pedidos.
+        </div>
+      @endif
     </div>
   </div>
 
@@ -226,6 +253,7 @@
 @endsection
 
 @push('scripts')
+@if(($chartLabels && $chartLabels->count() > 0) || ($chartPOS && $chartPOS->count() > 0) || ($chartPedidos && $chartPedidos->count() > 0))
 <script type="module">
   import Chart from 'https://cdn.jsdelivr.net/npm/chart.js/+esm';
 
@@ -235,21 +263,24 @@
   const dsUtil  = @json($chartUtil ?? []);
 
   const ctx = document.getElementById('ventasMensuales');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: 'POS',     data: dsPOS },
-        { label: 'Pedidos', data: dsPed },
-        { label: 'Utilidad POS', data: dsUtil, type:'line', borderDash:[6,6], tension:.3 }
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { position: 'top' } },
-      scales: { y: { beginAtZero: true } }
-    }
-  });
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'POS',     data: dsPOS, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)' },
+          { label: 'Pedidos', data: dsPed, backgroundColor: 'rgba(16, 185, 129, 0.5)', borderColor: 'rgba(16, 185, 129, 1)' },
+          { label: 'Utilidad POS', data: dsUtil, type:'line', borderDash:[6,6], tension:.3, borderColor: 'rgba(139, 92, 246, 1)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
 </script>
+@endif
 @endpush

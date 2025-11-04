@@ -99,12 +99,12 @@
 
         <div class="row g-3">
           <div class="col-md-6">
-            <label class="form-label">Nombre de contacto (opcional)</label>
+            <label class="form-label">Nombre de contacto <span class="text-danger" id="cliente_nombre_required" style="display:none;">*</span></label>
             <input name="cliente_nombre" id="cliente_nombre" class="form-control" placeholder="Nombre del cliente">
           </div>
 
           <div class="col-md-6">
-            <label class="form-label">Teléfono (opcional)</label>
+            <label class="form-label">Teléfono <span class="text-danger" id="cliente_telefono_required" style="display:none;">*</span></label>
             <input name="cliente_telefono" id="cliente_telefono" type="tel" class="form-control" placeholder="Teléfono de contacto">
           </div>
 
@@ -118,9 +118,9 @@
           </div>
 
           <div class="col-12">
-            <label class="form-label">Chofer (opcional)</label>
-            <select name="courier_id" id="courier_id" class="form-select">
-              <option value="">Sin asignar - Asignar después</option>
+            <label class="form-label">Chofer <span class="text-danger">*</span></label>
+            <select name="courier_id" id="courier_id" class="form-select" required>
+              <option value="">Selecciona un chofer...</option>
               @foreach($choferes ?? [] as $chofer)
                 <option value="{{ $chofer->id }}">
                   {{ $chofer->name }}
@@ -130,7 +130,7 @@
                 </option>
               @endforeach
             </select>
-            <small class="text-secondary">Puedes asignar el chofer ahora o después desde el detalle del pedido.</small>
+            <small class="text-secondary">El chofer es obligatorio para crear el pedido.</small>
           </div>
 
           <div class="col-md-6">
@@ -139,8 +139,8 @@
             <small class="text-secondary">Banderazo 10km = $100; + $10 por km adicional.</small>
           </div>
           <div class="col-md-6">
-            <label class="form-label">Costo de envío</label>
-            <input name="costo_envio" id="costo_envio" type="number" step="0.01" class="form-control" readonly value="0">
+            <label class="form-label">Costo de envío <span class="text-danger">*</span></label>
+            <input name="costo_envio" id="costo_envio" type="number" step="0.01" class="form-control" required value="0" min="0">
           </div>
           <div class="col-12">
             <button type="button" class="btn btn-outline-primary w-100" id="btnCalcEnvio">
@@ -223,10 +223,28 @@
   let autocomplete = null;
   let selectedPlace = null;
   
+  // Función para actualizar campos requeridos según si hay cliente seleccionado
+  function updateClienteFieldsRequired() {
+    const clienteId = customerSelect?.value;
+    const hasCliente = !!clienteId;
+    
+    if (clienteNombreInput) {
+      clienteNombreInput.required = !hasCliente;
+      document.getElementById('cliente_nombre_required').style.display = hasCliente ? 'none' : 'inline';
+    }
+    
+    if (clienteTelefonoInput) {
+      clienteTelefonoInput.required = !hasCliente;
+      document.getElementById('cliente_telefono_required').style.display = hasCliente ? 'none' : 'inline';
+    }
+  }
+  
   // Autocompletar campos cuando se selecciona un cliente
   if (customerSelect) {
     customerSelect.addEventListener('change', function() {
       const clienteId = this.value;
+      updateClienteFieldsRequired();
+      
       if (clienteId) {
         const cliente = clientes.find(c => c.id == clienteId);
         if (cliente) {
@@ -262,8 +280,15 @@
             }
           }
         }
+      } else {
+        // Si no hay cliente seleccionado, limpiar campos
+        if (clienteNombreInput) clienteNombreInput.value = '';
+        if (clienteTelefonoInput) clienteTelefonoInput.value = '';
       }
     });
+    
+    // Inicializar estado de campos requeridos
+    updateClienteFieldsRequired();
   }
   
   // Inicializar autocompletado de direcciones
@@ -647,6 +672,43 @@
 
   // Serializa "productos[...]" al enviar
   document.getElementById('pedidoForm').addEventListener('submit', (e) => {
+    // Validar campos obligatorios
+    const lat = document.getElementById('address_lat')?.value;
+    const lng = document.getElementById('address_lng')?.value;
+    
+    if (!lat || !lng) {
+      e.preventDefault();
+      alert('Debes seleccionar una dirección válida del autocompletado para obtener las coordenadas.');
+      direccionInput?.focus();
+      return false;
+    }
+    
+    // Validar cliente si no hay customer_id
+    const customerId = customerSelect?.value;
+    if (!customerId) {
+      if (!clienteNombreInput?.value?.trim()) {
+        e.preventDefault();
+        alert('El nombre del cliente es obligatorio cuando no seleccionas un cliente existente.');
+        clienteNombreInput?.focus();
+        return false;
+      }
+      if (!clienteTelefonoInput?.value?.trim()) {
+        e.preventDefault();
+        alert('El teléfono del cliente es obligatorio cuando no seleccionas un cliente existente.');
+        clienteTelefonoInput?.focus();
+        return false;
+      }
+    }
+    
+    // Validar chofer
+    const courierId = document.getElementById('courier_id')?.value;
+    if (!courierId) {
+      e.preventDefault();
+      alert('El chofer es obligatorio. Debes seleccionar un chofer para el pedido.');
+      document.getElementById('courier_id')?.focus();
+      return false;
+    }
+    
     // Validar stock antes de enviar
     let hasErrors = false;
     let errorMessages = [];

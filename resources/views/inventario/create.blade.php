@@ -38,13 +38,13 @@
           <input name="precio_venta" type="number" step="0.01" class="form-control" required>
         </div>
         <div class="col-md-4">
-          <label class="form-label">Precio mayoreo (opcional)</label>
-          <input name="precio_mayoreo" type="number" step="0.01" class="form-control">
+          <label class="form-label">Precio mayoreo <span class="text-danger">*</span></label>
+          <input name="precio_mayoreo" type="number" step="0.01" class="form-control" required>
         </div>
 
         <div class="col-md-4">
-          <label class="form-label">Lista de precios</label>
-          <select name="price_tier" class="form-select">
+          <label class="form-label">Lista de precios <span class="text-danger">*</span></label>
+          <select name="price_tier" class="form-select" required>
             <option value="menudeo">Menudeo</option>
             <option value="mayoreo">Mayoreo</option>
           </select>

@@ -22,9 +22,9 @@
             <option value="0">No</option><option value="1">Sí</option>
           </select>
         </div>
-        <div class="col-md-4"><label class="form-label">Teléfono</label><input name="telefono" class="form-control"></div>
-        <div class="col-md-4"><label class="form-label">Email</label><input name="email" type="email" class="form-control"></div>
-        <div class="col-12"><label class="form-label">Dirección entrega</label><input name="direccion_entrega" class="form-control"></div>
+        <div class="col-md-4"><label class="form-label">Teléfono <span class="text-danger">*</span></label><input name="telefono" class="form-control" required></div>
+        <div class="col-md-4"><label class="form-label">Email <span class="text-danger">*</span></label><input name="email" type="email" class="form-control" required></div>
+        <div class="col-12"><label class="form-label">Dirección entrega <span class="text-danger">*</span></label><input name="direccion_entrega" class="form-control" required></div>
         <div class="col-12 d-flex justify-content-end gap-2">
           <a class="btn btn-light" href="{{ route('clientes.index') }}">Cancelar</a>
           <button class="btn btn-primary"><i class="bi bi-check2-circle"></i> Guardar</button>

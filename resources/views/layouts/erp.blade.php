@@ -245,12 +245,14 @@
             </h2>
         </div>
         <nav class="sidebar-nav">
+            @can('ver-dashboard')
             <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
                     <i class="bi bi-speedometer2"></i> 
                     <span>Dashboard</span>
                 </a>
             </div>
+            @endcan
 
             <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('pedidos.*') ? 'active' : '' }}" href="{{ route('pedidos.index') }}">
@@ -287,12 +289,14 @@
                 </a>
             </div>
 
+            @can('ver-finanzas')
             <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('finanzas.*') ? 'active' : '' }}" href="{{ route('finanzas.index') }}">
                     <i class="bi bi-graph-up"></i> 
                     <span>Finanzas</span>
                 </a>
             </div>
+            @endcan
 
             <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.index') }}">

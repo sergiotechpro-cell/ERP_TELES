@@ -270,6 +270,38 @@
         </div>
       </div>
 
+      {{-- CAMBIAR ESTADO DEL PEDIDO --}}
+      <div class="card border-0 shadow-sm mb-3" style="border-radius:16px;">
+        <div class="card-body">
+          <h6 class="mb-3"><i class="bi bi-arrow-repeat me-2"></i>Cambiar estado</h6>
+          <form method="POST" action="{{ route('pedidos.update', $pedido) }}" class="row g-2">
+            @csrf
+            @method('PATCH')
+            <div class="col-12">
+              <label class="form-label">Estado actual</label>
+              <select name="estado" class="form-select" required>
+                <option value="capturado" {{ $pedido->estado === 'capturado' ? 'selected' : '' }}>Capturado</option>
+                <option value="preparacion" {{ $pedido->estado === 'preparacion' ? 'selected' : '' }}>Preparación</option>
+                <option value="asignado" {{ $pedido->estado === 'asignado' ? 'selected' : '' }}>Asignado</option>
+                <option value="en_ruta" {{ $pedido->estado === 'en_ruta' ? 'selected' : '' }}>En ruta</option>
+                <option value="entregado" {{ $pedido->estado === 'entregado' ? 'selected' : '' }}>Entregado</option>
+                <option value="entregado_pendiente_pago" {{ $pedido->estado === 'entregado_pendiente_pago' ? 'selected' : '' }}>Entregado - Pendiente Pago</option>
+                <option value="finalizado" {{ $pedido->estado === 'finalizado' ? 'selected' : '' }}>Finalizado</option>
+                <option value="cancelado" {{ $pedido->estado === 'cancelado' ? 'selected' : '' }}>Cancelado</option>
+              </select>
+              <small class="text-secondary d-block mt-1">
+                <i class="bi bi-info-circle"></i> Al cambiar a "Finalizado", el dinero se reflejará en finanzas automáticamente.
+              </small>
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check2"></i> Actualizar Estado
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <div class="card border-0 shadow-sm" style="border-radius:16px;">
         <div class="card-body">
           <h6 class="mb-3"><i class="bi bi-upc-scan me-2"></i>Escaneo de serie</h6>
