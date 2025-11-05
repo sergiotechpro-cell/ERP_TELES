@@ -12,6 +12,11 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Node.js (for Vite)
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
@@ -27,7 +32,16 @@ COPY composer.json composer.lock ./
 # Install PHP dependencies (skip scripts for now)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-# Copy application files
+# Copy package files and necessary files for Vite build
+COPY package.json package-lock.json ./
+COPY vite.config.js ./
+COPY resources ./resources
+COPY tailwind.config.js postcss.config.js ./
+
+# Install Node.js dependencies and build assets (need devDependencies for Vite)
+RUN npm ci && npm run build && rm -rf node_modules
+
+# Copy remaining application files
 COPY . .
 
 # Create necessary directories and set permissions
