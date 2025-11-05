@@ -131,11 +131,19 @@ export default function MapComponent({ lat, lng, origen }: MapProps) {
             // - Marcador B en el destino
             directionsRenderer.setDirections(result);
             
-            const leg = result.routes[0].legs[0];
-            setRouteInfo({
-              distance: leg.distance.text,
-              duration: leg.duration.text,
-            });
+            const route = result.routes?.[0];
+            const leg = route?.legs?.[0];
+            if (leg && leg.distance && leg.duration && leg.distance.text && leg.duration.text) {
+              setRouteInfo({
+                distance: leg.distance.text,
+                duration: leg.duration.text,
+              });
+            } else {
+              setRouteInfo({
+                distance: 'N/A',
+                duration: 'N/A',
+              });
+            }
             setMapLoaded(true);
           } else {
             console.error('MapComponent: Error al calcular la ruta:', status, result);
