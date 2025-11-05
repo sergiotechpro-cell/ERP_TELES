@@ -16,3 +16,13 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Next.js (courier-app)
+/courier-app/node_modules
+/courier-app/.next
+/courier-app/.next/
+/courier-app/out
+/courier-app/.env*.local
+/courier-app/.vercel
+/courier-app/.swc
+/courier-app/dist

@@ -24,11 +24,19 @@ WORKDIR /app
 # Copy composer files
 COPY composer.json composer.lock ./
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install PHP dependencies (skip scripts for now)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # Copy application files
 COPY . .
+
+# Create necessary directories and set permissions
+RUN mkdir -p storage/framework/{sessions,views,cache} \
+    && mkdir -p storage/logs \
+    && mkdir -p bootstrap/cache
+
+# Run post-install scripts now that files are available
+RUN php artisan package:discover --ansi || true
 
 # Set permissions
 RUN chown -R www-data:www-data /app
