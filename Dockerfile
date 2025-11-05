@@ -53,12 +53,16 @@ RUN mkdir -p storage/framework/{sessions,views,cache} \
 # Run post-install scripts now that files are available
 RUN php artisan package:discover --ansi || true
 
+# Copy and set permissions for start script
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 # Set permissions
 RUN chown -R www-data:www-data /app
 
 # Expose port (Railway will set PORT env variable)
 EXPOSE 8000
 
-# Start Laravel server
-CMD sh -c 'php artisan serve --host=0.0.0.0 --port=${PORT:-8000}'
+# Start Laravel server with migrations
+CMD ["/usr/local/bin/start.sh"]
 
