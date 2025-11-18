@@ -54,3 +54,41 @@ export interface AssignmentsResponse {
   data: Assignment[];
 }
 
+export interface SaleItem {
+  producto: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+}
+
+export interface Sale {
+  id: number;
+  fecha: string;
+  subtotal: number;
+  envio: number;
+  total: number;
+  forma_pago: string;
+  vendedor: {
+    id: number;
+    name: string;
+  } | null;
+  cliente: {
+    id: number;
+    nombre: string;
+  } | null;
+  items: SaleItem[];
+}
+
+export interface SalesSummary {
+  total_ventas: number;
+  total_bruto: number;
+  total_efectivo: number;
+  total_tarjeta: number;
+  total_transferencia: number;
+}
+
+export interface SalesResponse {
+  data: Sale[];
+  summary: SalesSummary;
+}
+

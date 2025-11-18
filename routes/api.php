@@ -31,5 +31,8 @@ Route::prefix('courier')->group(function () {
         Route::get('/assignments/{assignment}', [CourierController::class, 'showAssignment']);
         Route::post('/assignments/{assignment}/start', [CourierController::class, 'startAssignment']);
         Route::post('/assignments/{assignment}/complete', [CourierController::class, 'completeAssignment']);
+        
+        // Sales (ventas brutas)
+        Route::get('/sales', [CourierController::class, 'sales']);
     });
 });

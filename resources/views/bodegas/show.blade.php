@@ -27,8 +27,43 @@
           
           <div class="mb-3">
             <label class="text-secondary small">Nombre</label>
-            <div class="fw-semibold">{{ $bodega->nombre }}</div>
+            <div class="fw-semibold">
+              {{ $bodega->nombre }}
+              @if($bodega->parent_warehouse_id)
+                <span class="badge text-bg-secondary ms-2">
+                  <i class="bi bi-diagram-2"></i> Sub bodega
+                </span>
+              @else
+                <span class="badge text-bg-primary ms-2">
+                  <i class="bi bi-building"></i> Bodega principal
+                </span>
+              @endif
+            </div>
           </div>
+
+          @if($bodega->parentWarehouse)
+          <div class="mb-3">
+            <label class="text-secondary small">Bodega principal</label>
+            <div class="fw-semibold">
+              <a href="{{ route('bodegas.show', $bodega->parentWarehouse) }}" class="text-decoration-none">
+                <i class="bi bi-arrow-up"></i> {{ $bodega->parentWarehouse->nombre }}
+              </a>
+            </div>
+          </div>
+          @endif
+
+          @if($bodega->subWarehouses->count() > 0)
+          <div class="mb-3">
+            <label class="text-secondary small">Sub-bodegas</label>
+            <div>
+              @foreach($bodega->subWarehouses as $subBodega)
+                <a href="{{ route('bodegas.show', $subBodega) }}" class="badge text-bg-light text-decoration-none me-1">
+                  <i class="bi bi-arrow-down"></i> {{ $subBodega->nombre }}
+                </a>
+              @endforeach
+            </div>
+          </div>
+          @endif
 
           <div class="mb-3">
             <label class="text-secondary small">Dirección</label>

@@ -54,14 +54,30 @@
           @if($seriales->isEmpty())
             <x-empty icon="bi-upc-scan" title="Sin números de serie" text="Registra entradas para generar series." />
           @else
+            <div class="mb-3">
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick="printAllSerials()">
+                <i class="bi bi-printer"></i> Imprimir todos
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printSelectedSerials()">
+                <i class="bi bi-printer-fill"></i> Imprimir seleccionados
+              </button>
+            </div>
             <div class="list-group list-group-flush">
               @foreach($seriales as $sn)
                 <div class="list-group-item d-flex align-items-center justify-content-between">
-                  <div>
-                    <span class="fw-medium">{{ $sn->numero_serie }}</span>
-                    <small class="text-secondary ms-2">({{ $sn->estado }})</small>
+                  <div class="form-check">
+                    <input class="form-check-input serial-checkbox" type="checkbox" value="{{ $sn->id }}" id="serial_{{ $sn->id }}">
+                    <label class="form-check-label" for="serial_{{ $sn->id }}">
+                      <span class="fw-medium">{{ $sn->numero_serie }}</span>
+                      <small class="text-secondary ms-2">({{ $sn->estado }})</small>
+                    </label>
                   </div>
-                  <span class="badge text-bg-light">ID: {{ $sn->id }}</span>
+                  <div class="d-flex gap-2 align-items-center">
+                    <a href="{{ route('inventario.print-serial', $sn) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Imprimir ticket">
+                      <i class="bi bi-printer"></i>
+                    </a>
+                    <span class="badge text-bg-light">ID: {{ $sn->id }}</span>
+                  </div>
                 </div>
               @endforeach
             </div>
@@ -72,3 +88,46 @@
   </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function printAllSerials() {
+  const checkboxes = document.querySelectorAll('.serial-checkbox');
+  checkboxes.forEach(cb => cb.checked = true);
+  printSelectedSerials();
+}
+
+function printSelectedSerials() {
+  const selected = Array.from(document.querySelectorAll('.serial-checkbox:checked'))
+    .map(cb => cb.value);
+  
+  if (selected.length === 0) {
+    alert('Selecciona al menos un número de serie para imprimir');
+    return;
+  }
+  
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '{{ route("inventario.print-serials") }}';
+  form.target = '_blank';
+  
+  const csrf = document.createElement('input');
+  csrf.type = 'hidden';
+  csrf.name = '_token';
+  csrf.value = '{{ csrf_token() }}';
+  form.appendChild(csrf);
+  
+  selected.forEach(id => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'serial_ids[]';
+    input.value = id;
+    form.appendChild(input);
+  });
+  
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
+}
+</script>
+@endpush

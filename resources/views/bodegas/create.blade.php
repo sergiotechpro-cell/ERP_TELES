@@ -33,6 +33,24 @@
           <input name="nombre" class="form-control" required placeholder="Bodega Centro">
         </div>
 
+        <div class="col-md-6">
+          <label class="form-label">Tipo de bodega</label>
+          <select name="parent_warehouse_id" id="parent_warehouse_id" class="form-select">
+            <option value="">Bodega principal</option>
+            @foreach($bodegas ?? [] as $bodega)
+              <option value="{{ $bodega->id }}">Sub bodega de: {{ $bodega->nombre }}</option>
+            @endforeach
+          </select>
+          <small class="text-secondary">
+            <i class="bi bi-info-circle"></i> 
+            Selecciona "Bodega principal" o elige una bodega padre para crear una <strong>Sub bodega</strong>.
+          </small>
+          <div id="sub_bodega_info" class="alert alert-info mt-2 d-none">
+            <i class="bi bi-diagram-2"></i> 
+            <strong>Estás creando una Sub bodega.</strong> Esta bodega estará vinculada a la bodega principal seleccionada.
+          </div>
+        </div>
+
         <div class="col-12">
           <label class="form-label">Dirección de la bodega <span class="text-danger">*</span></label>
           <input name="direccion" id="direccion_bodega" class="form-control" required
@@ -190,6 +208,20 @@
     }
   }
   @endif
+  
+  // Mostrar/ocultar información de sub-bodega
+  const parentSelect = document.getElementById('parent_warehouse_id');
+  const subBodegaInfo = document.getElementById('sub_bodega_info');
+  
+  if (parentSelect && subBodegaInfo) {
+    parentSelect.addEventListener('change', function() {
+      if (this.value) {
+        subBodegaInfo.classList.remove('d-none');
+      } else {
+        subBodegaInfo.classList.add('d-none');
+      }
+    });
+  }
   
   // Validar antes de enviar el formulario
   document.querySelector('form').addEventListener('submit', function(e) {

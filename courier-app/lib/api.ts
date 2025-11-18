@@ -3,7 +3,9 @@ import type {
   User, 
   LoginResponse, 
   AssignmentsResponse,
-  Assignment 
+  Assignment,
+  SalesResponse,
+  Sale
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -74,6 +76,14 @@ export const courierAPI = {
 
   completeAssignment: async (id: number): Promise<void> => {
     await api.post(`/courier/assignments/${id}/complete`);
+  },
+
+  getSales: async (startDate?: string, endDate?: string): Promise<SalesResponse> => {
+    const params: any = {};
+    if (startDate) params.start_date = startDate;
+    if (endDate) params.end_date = endDate;
+    const { data } = await api.get<SalesResponse>('/courier/sales', { params });
+    return data;
   },
 };
 

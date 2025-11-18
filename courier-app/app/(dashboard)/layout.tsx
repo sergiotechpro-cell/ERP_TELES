@@ -54,12 +54,22 @@ export default function DashboardLayout({
                 <Link
                   href="/pedidos"
                   className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    pathname === '/pedidos'
+                    pathname === '/pedidos' || pathname?.startsWith('/pedidos/')
                       ? 'bg-blue-100 text-blue-700'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   Mis Pedidos
+                </Link>
+                <Link
+                  href="/ventas"
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    pathname === '/ventas'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  Ventas Brutas
                 </Link>
               </nav>
             </div>

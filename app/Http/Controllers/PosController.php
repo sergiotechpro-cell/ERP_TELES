@@ -245,6 +245,15 @@ class PosController extends Controller
     ]);
 
     DB::transaction(function() use ($data, &$saleId) {
+        // Obtener usuario vendedor y calcular comisión
+        $user = Auth::user();
+        $commissionPercentage = $user->commission_percentage ?? 0;
+        $commissionAmount = 0;
+        
+        if ($commissionPercentage > 0) {
+            $commissionAmount = ($data['subtotal'] * $commissionPercentage) / 100;
+        }
+        
         $sale = Sale::create([
             'customer_id' => $data['customer_id'] ?? null,
             'user_id'     => Auth::id(),
@@ -252,6 +261,8 @@ class PosController extends Controller
             'total'       => $data['subtotal'],   // sin impuestos por ahora
             'forma_pago'  => $data['forma_pago'],
             'status'      => 'pagada',
+            'commission_amount' => $commissionAmount,
+            'commission_percentage' => $commissionPercentage > 0 ? $commissionPercentage : null,
         ]);
         $saleId = $sale->id;
 
@@ -298,7 +309,11 @@ class PosController extends Controller
         }
         
         // Crear pago automáticamente para la venta (mapear forma_pago al enum de payments)
-        $formaPagoPayment = ($data['forma_pago'] === 'transferencia') ? 'transferencia' : 'efectivo';
+        $formaPagoPayment = match($data['forma_pago']) {
+            'tarjeta' => 'tarjeta',
+            'transferencia' => 'transferencia',
+            default => 'efectivo'
+        };
         Payment::create([
             'order_id'    => null,
             'sale_id'     => $sale->id,

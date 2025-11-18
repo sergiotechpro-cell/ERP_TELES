@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\DeliveryAssignment;
 use App\Models\Order;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 
 class CourierController extends Controller
@@ -189,6 +190,64 @@ class CourierController extends Controller
                         'estado' => $assignment->order->payments->first()->estado,
                     ] : null,
                 ],
+            ]
+        ]);
+    }
+
+    /**
+     * Listar ventas brutas para el chofer
+     */
+    public function sales(Request $r)
+    {
+        $user = $r->user();
+
+        // Obtener ventas del día actual o del rango especificado
+        $startDate = $r->input('start_date') 
+            ? \Carbon\Carbon::parse($r->input('start_date')) 
+            : now()->startOfDay();
+        $endDate = $r->input('end_date') 
+            ? \Carbon\Carbon::parse($r->input('end_date')) 
+            : now()->endOfDay();
+
+        $sales = Sale::with(['items.product', 'customer', 'user'])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->where('status', 'pagada')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'data' => $sales->map(function ($sale) {
+                return [
+                    'id' => $sale->id,
+                    'fecha' => $sale->created_at->format('Y-m-d H:i:s'),
+                    'subtotal' => (float) $sale->subtotal,
+                    'envio' => (float) $sale->envio,
+                    'total' => (float) $sale->total,
+                    'forma_pago' => $sale->forma_pago,
+                    'vendedor' => $sale->user ? [
+                        'id' => $sale->user->id,
+                        'name' => $sale->user->name,
+                    ] : null,
+                    'cliente' => $sale->customer ? [
+                        'id' => $sale->customer->id,
+                        'nombre' => $sale->customer->nombre,
+                    ] : null,
+                    'items' => $sale->items->map(function ($item) {
+                        return [
+                            'producto' => $item->product->descripcion,
+                            'cantidad' => $item->cantidad,
+                            'precio_unitario' => (float) $item->precio_unitario,
+                            'subtotal' => (float) ($item->cantidad * $item->precio_unitario),
+                        ];
+                    }),
+                ];
+            }),
+            'summary' => [
+                'total_ventas' => $sales->count(),
+                'total_bruto' => (float) $sales->sum('total'),
+                'total_efectivo' => (float) $sales->where('forma_pago', 'efectivo')->sum('total'),
+                'total_tarjeta' => (float) $sales->where('forma_pago', 'tarjeta')->sum('total'),
+                'total_transferencia' => (float) $sales->where('forma_pago', 'transferencia')->sum('total'),
             ]
         ]);
     }

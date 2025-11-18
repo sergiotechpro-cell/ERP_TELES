@@ -74,6 +74,12 @@ Route::middleware(['auth'])->group(function () {
         ->name('inventario.add-stock');
     Route::post('/inventario/{inventario}/agregar-stock', [InventoryController::class, 'storeAddStock'])
         ->name('inventario.store-add-stock');
+    
+    // Imprimir tickets de números de serie
+    Route::get('/inventario/serial/{serialNumber}/print', [InventoryController::class, 'printSerialTicket'])
+        ->name('inventario.print-serial');
+    Route::post('/inventario/serial/print', [InventoryController::class, 'printSerialTickets'])
+        ->name('inventario.print-serials');
 
     // Resource route (debe ir al final para no capturar rutas específicas)
     Route::resource('inventario', InventoryController::class);

@@ -34,7 +34,18 @@
           <tbody>
             @foreach($bodegas as $bodega)
               <tr>
-                <td class="fw-semibold">{{ $bodega->nombre }}</td>
+                <td class="fw-semibold">
+                  {{ $bodega->nombre }}
+                  @if($bodega->parent_warehouse_id)
+                    <span class="badge text-bg-secondary ms-2">
+                      <i class="bi bi-diagram-2"></i> Sub bodega
+                    </span>
+                    <br>
+                    <small class="text-secondary">
+                      <i class="bi bi-arrow-right"></i> {{ $bodega->parentWarehouse->nombre ?? 'Bodega principal' }}
+                    </small>
+                  @endif
+                </td>
                 <td class="text-truncate" style="max-width: 300px">
                   {{ $bodega->direccion ?? '—' }}
                 </td>

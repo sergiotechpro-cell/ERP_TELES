@@ -225,4 +225,26 @@ class InventoryController extends Controller
 
         return redirect()->route('inventario.show', $inventario)->with('ok','Unidades agregadas al producto.');
     }
+
+    /**
+     * Imprimir ticket de número de serie
+     */
+    public function printSerialTicket(SerialNumber $serialNumber)
+    {
+        $serialNumber->load('warehouseProduct.product');
+        return view('inventario.print-serial-ticket', compact('serialNumber'));
+    }
+
+    /**
+     * Imprimir múltiples tickets de números de serie
+     */
+    public function printSerialTickets(Request $r)
+    {
+        $serialIds = $r->input('serial_ids', []);
+        $serialNumbers = SerialNumber::whereIn('id', $serialIds)
+            ->with('warehouseProduct.product')
+            ->get();
+        
+        return view('inventario.print-serial-tickets', compact('serialNumbers'));
+    }
 }

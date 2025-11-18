@@ -9,7 +9,8 @@ class WarehouseController extends Controller
 {
     public function index()
     {
-        $bodegas = Warehouse::withCount('warehouseProducts')
+        $bodegas = Warehouse::with('parentWarehouse')
+            ->withCount('warehouseProducts')
             ->orderBy('nombre')
             ->paginate(15);
         
@@ -19,7 +20,8 @@ class WarehouseController extends Controller
     public function create()
     {
         $mapsKey = config('services.google.maps_key');
-        return view('bodegas.create', compact('mapsKey'));
+        $bodegas = Warehouse::whereNull('parent_warehouse_id')->orderBy('nombre')->get();
+        return view('bodegas.create', compact('mapsKey', 'bodegas'));
     }
 
     public function store(Request $r)
@@ -29,6 +31,7 @@ class WarehouseController extends Controller
             'direccion' => ['required','string','max:255'],
             'lat'       => ['required','numeric'],
             'lng'       => ['required','numeric'],
+            'parent_warehouse_id' => ['nullable','exists:warehouses,id'],
         ], [
             'direccion.required' => 'La dirección de la bodega es obligatoria.',
             'lat.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida del autocompletado.',
@@ -47,14 +50,19 @@ class WarehouseController extends Controller
 
     public function show(Warehouse $bodega)
     {
-        $bodega->loadCount('warehouseProducts');
+        $bodega->load(['parentWarehouse', 'subWarehouses'])
+            ->loadCount('warehouseProducts');
         return view('bodegas.show', compact('bodega'));
     }
 
     public function edit(Warehouse $bodega)
     {
         $mapsKey = config('services.google.maps_key');
-        return view('bodegas.edit', compact('bodega', 'mapsKey'));
+        $bodegas = Warehouse::whereNull('parent_warehouse_id')
+            ->where('id', '!=', $bodega->id)
+            ->orderBy('nombre')
+            ->get();
+        return view('bodegas.edit', compact('bodega', 'mapsKey', 'bodegas'));
     }
 
     public function update(Request $r, Warehouse $bodega)
@@ -64,6 +72,7 @@ class WarehouseController extends Controller
             'direccion' => ['required','string','max:255'],
             'lat'       => ['required','numeric'],
             'lng'       => ['required','numeric'],
+            'parent_warehouse_id' => ['nullable','exists:warehouses,id'],
         ], [
             'direccion.required' => 'La dirección de la bodega es obligatoria.',
             'lat.required' => 'Las coordenadas son obligatorias. Selecciona una dirección válida del autocompletado.',
