@@ -94,10 +94,10 @@ export default function VentasPage() {
   };
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Ventas Brutas</h1>
-        <p className="text-gray-600">Consulta el registro de todas las ventas realizadas</p>
+    <div className="w-full">
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Ventas Brutas</h1>
+        <p className="text-sm sm:text-base text-gray-600">Consulta el registro de todas las ventas realizadas</p>
       </div>
 
       {/* Filtros de fecha */}
@@ -148,26 +148,26 @@ export default function VentasPage() {
 
       {/* Resumen */}
       {summary && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-sm text-gray-600 mb-1">Total Ventas</div>
-            <div className="text-2xl font-bold text-gray-900">{summary.total_ventas}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-600 mb-1">Total Ventas</div>
+            <div className="text-xl sm:text-2xl font-bold text-gray-900">{summary.total_ventas}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-sm text-gray-600 mb-1">Total Bruto</div>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.total_bruto)}</div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-600 mb-1">Total Bruto</div>
+            <div className="text-lg sm:text-2xl font-bold text-green-600 truncate">{formatCurrency(summary.total_bruto)}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-sm text-gray-600 mb-1">Efectivo</div>
-            <div className="text-xl font-bold text-green-700">{formatCurrency(summary.total_efectivo)}</div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-600 mb-1">Efectivo</div>
+            <div className="text-base sm:text-xl font-bold text-green-700 truncate">{formatCurrency(summary.total_efectivo)}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-sm text-gray-600 mb-1">Tarjeta</div>
-            <div className="text-xl font-bold text-blue-700">{formatCurrency(summary.total_tarjeta)}</div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4">
+            <div className="text-xs sm:text-sm text-gray-600 mb-1">Tarjeta</div>
+            <div className="text-base sm:text-xl font-bold text-blue-700 truncate">{formatCurrency(summary.total_tarjeta)}</div>
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-sm text-gray-600 mb-1">Transferencia</div>
-            <div className="text-xl font-bold text-purple-700">{formatCurrency(summary.total_transferencia)}</div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 col-span-2 sm:col-span-1">
+            <div className="text-xs sm:text-sm text-gray-600 mb-1">Transferencia</div>
+            <div className="text-base sm:text-xl font-bold text-purple-700 truncate">{formatCurrency(summary.total_transferencia)}</div>
           </div>
         </div>
       )}

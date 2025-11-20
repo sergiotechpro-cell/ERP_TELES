@@ -22,7 +22,15 @@ class AuthController extends Controller
 
         $user = User::where('email', $r->email)->first();
 
-        if (!$user || !Hash::check($r->password, $user->password)) {
+        if (!$user) {
+            \Log::warning('Login fallido: Usuario no encontrado', ['email' => $r->email]);
+            throw ValidationException::withMessages([
+                'email' => ['Las credenciales son incorrectas.'],
+            ]);
+        }
+
+        if (!Hash::check($r->password, $user->password)) {
+            \Log::warning('Login fallido: Contraseña incorrecta', ['email' => $r->email, 'user_id' => $user->id]);
             throw ValidationException::withMessages([
                 'email' => ['Las credenciales son incorrectas.'],
             ]);
@@ -31,12 +39,15 @@ class AuthController extends Controller
         // Verificar que el usuario sea un empleado
         $employeeProfile = $user->employeeProfile;
         if (!$employeeProfile) {
+            \Log::warning('Login fallido: Usuario sin employeeProfile', ['email' => $r->email, 'user_id' => $user->id]);
             throw ValidationException::withMessages([
-                'email' => ['El usuario no es un empleado/chofer.'],
+                'email' => ['El usuario no es un empleado/chofer. Debe tener un perfil de empleado creado en el ERP.'],
             ]);
         }
 
         $token = $user->createToken('courier-app')->plainTextToken;
+
+        \Log::info('Login exitoso', ['email' => $r->email, 'user_id' => $user->id]);
 
         return response()->json([
             'token' => $token,

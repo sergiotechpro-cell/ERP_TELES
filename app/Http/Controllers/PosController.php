@@ -106,7 +106,7 @@ class PosController extends Controller
         }
         
         $data = $r->validate([
-            'forma_pago'               => ['required','in:efectivo,transferencia'],
+            'forma_pago'               => ['required','in:efectivo,tarjeta,transferencia'],
             'subtotal'                 => ['required','numeric','min:0'],
             'direccion_entrega'        => ['required','string','max:255'],
             'costo_envio'              => ['required','numeric','min:0'],
@@ -206,7 +206,11 @@ class PosController extends Controller
             $totalConEnvio = $totalPedido + ($data['costo_envio'] ?? 0);
             
             // Crear pago automáticamente (mapear forma_pago al enum de payments)
-            $formaPagoPayment = ($data['forma_pago'] === 'transferencia') ? 'transferencia' : 'efectivo';
+            $formaPagoPayment = match($data['forma_pago']) {
+                'tarjeta' => 'tarjeta',
+                'transferencia' => 'transferencia',
+                default => 'efectivo'
+            };
             Payment::create([
                 'order_id'    => $pedido->id,
                 'sale_id'     => null,
