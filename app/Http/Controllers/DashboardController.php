@@ -158,7 +158,6 @@ class DashboardController extends Controller
         $pedidosFinalizados = Order::where('estado', 'finalizado')->count();
 
         return view('dashboard', compact(
-            'ventasMensuales',
             'inventario',
             'pedidos',
             'clientes',
