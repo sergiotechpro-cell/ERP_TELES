@@ -18,7 +18,7 @@ class ScheduleController extends Controller
           $start .= 'T09:00:00'; // Hora por defecto si no hay
         }
         
-        return [
+        return (object) [
           'id' => 'schedule_' . $e->id,
           'title' => $e->titulo ?? ('Pedido #'.$e->order_id),
           'start' => $start,
@@ -31,7 +31,8 @@ class ScheduleController extends Controller
             'order_id' => $e->order_id,
           ]
         ];
-      });
+      })
+      ->values();
 
     // Eventos de entregas asignadas (DeliveryAssignment) - automáticos
     $assignedEvents = DeliveryAssignment::with(['order', 'courier'])
@@ -50,7 +51,7 @@ class ScheduleController extends Controller
         
         $color = $a->estado === 'en_ruta' ? '#10b981' : '#f59e0b'; // Verde si en ruta, amarillo si pendiente
         
-        return [
+        return (object) [
           'id' => 'assignment_' . $a->id,
           'title' => 'Pedido #' . $a->order->id . ' - ' . ($a->courier->name ?? 'Sin chofer'),
           'start' => $fecha . 'T' . $hora,
@@ -65,10 +66,11 @@ class ScheduleController extends Controller
             'direccion' => $direccion,
           ]
         ];
-      });
+      })
+      ->values();
 
     // Combinar ambos tipos de eventos
-    $events = $scheduledEvents->merge($assignedEvents)->values();
+    $events = $scheduledEvents->concat($assignedEvents);
     
     // Choferes para filtro
     $choferes = \App\Models\User::whereHas('employeeProfile')->get(['id', 'name']);
