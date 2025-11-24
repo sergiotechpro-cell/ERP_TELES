@@ -42,7 +42,7 @@ class DashboardController extends Controller
         $pedidos = Order::count();
         $clientes = Customer::count();
         $empleados = EmployeeProfile::count();
-
+        
         $valorInventario = (float) WarehouseProduct::join('products', 'products.id', '=', 'warehouse_product.product_id')
             ->selectRaw('COALESCE(SUM(warehouse_product.stock * products.costo_unitario), 0) as total')
             ->value('total');

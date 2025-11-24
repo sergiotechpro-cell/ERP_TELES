@@ -4,15 +4,40 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { courierAPI } from '@/lib/api';
 import type { Assignment } from '@/types';
+import { useLocationTracking } from '@/app/hooks/useLocationTracking';
 
 export default function PedidosPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [optimizing, setOptimizing] = useState(false);
+  const [trackingEnabled, setTrackingEnabled] = useState(false);
+
+  // Determinar si hay pedidos activos (en ruta)
+  const activeAssignment = assignments.find(a => a.estado === 'en_ruta');
+  const shouldTrack = trackingEnabled && activeAssignment !== undefined;
+
+  // Hook de tracking GPS
+  const { currentLocation, isTracking, error: trackingError } = useLocationTracking({
+    enabled: shouldTrack,
+    orderId: activeAssignment?.pedido.id,
+    interval: 15000, // Actualizar cada 15 segundos
+    onLocationUpdate: (location) => {
+      console.log('Ubicación actualizada:', location);
+    },
+    onError: (err) => {
+      console.error('Error en tracking:', err);
+    }
+  });
 
   useEffect(() => {
     loadAssignments();
+    
+    // Activar tracking automáticamente si hay pedidos en ruta
+    const hasActiveDelivery = assignments.some(a => a.estado === 'en_ruta');
+    if (hasActiveDelivery) {
+      setTrackingEnabled(true);
+    }
   }, []);
 
   const loadAssignments = async () => {
@@ -116,8 +141,26 @@ export default function PedidosPage() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Mis Pedidos</h1>
-        <p className="text-sm sm:text-base text-gray-600">Gestiona tus entregas asignadas</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Mis Pedidos</h1>
+            <p className="text-sm sm:text-base text-gray-600">Gestiona tus entregas asignadas</p>
+          </div>
+          
+          {/* Indicador de tracking GPS */}
+          {isTracking && (
+            <div className="flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-lg border border-green-200">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium">GPS Activo</span>
+            </div>
+          )}
+          
+          {trackingError && (
+            <div className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-2 rounded-lg border border-red-200">
+              <span className="text-sm font-medium">⚠️ Error GPS</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {loading && (

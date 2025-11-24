@@ -289,6 +289,15 @@
                 </a>
             </div>
 
+            @can('ver-dashboard')
+            <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('tracking.*') ? 'active' : '' }}" href="{{ route('tracking.map') }}">
+                    <i class="bi bi-geo-alt-fill"></i> 
+                    <span>Tracking GPS</span>
+                </a>
+            </div>
+            @endcan
+
             <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('calendario.*') ? 'active' : '' }}" href="{{ route('calendario.index') }}">
                     <i class="bi bi-calendar3"></i> 

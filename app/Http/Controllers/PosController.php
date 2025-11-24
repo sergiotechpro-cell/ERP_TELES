@@ -198,18 +198,18 @@ class PosController extends Controller
                     SerialNumber::whereIn('id', $serialModels->pluck('id'))->update(['estado' => 'apartado']);
                 } else {
                     // Descontar stock del inventario (sin series)
-                    $cantidadRestante = $cantidadSolicitada;
-                    foreach ($prod->warehouses as $warehouse) {
-                        if ($cantidadRestante <= 0) break;
-                        
-                        $stockActual = $warehouse->pivot->stock ?? 0;
-                        if ($stockActual > 0) {
-                            $cantidadADescontar = min($stockActual, $cantidadRestante);
-                            DB::table('warehouse_product')
-                                ->where('warehouse_id', $warehouse->id)
-                                ->where('product_id', $prod->id)
-                                ->decrement('stock', $cantidadADescontar);
-                            $cantidadRestante -= $cantidadADescontar;
+                $cantidadRestante = $cantidadSolicitada;
+                foreach ($prod->warehouses as $warehouse) {
+                    if ($cantidadRestante <= 0) break;
+                    
+                    $stockActual = $warehouse->pivot->stock ?? 0;
+                    if ($stockActual > 0) {
+                        $cantidadADescontar = min($stockActual, $cantidadRestante);
+                        DB::table('warehouse_product')
+                            ->where('warehouse_id', $warehouse->id)
+                            ->where('product_id', $prod->id)
+                            ->decrement('stock', $cantidadADescontar);
+                        $cantidadRestante -= $cantidadADescontar;
                         }
                     }
                 }
@@ -332,18 +332,18 @@ class PosController extends Controller
                 SerialNumber::whereIn('id', $serialModels->pluck('id'))->update(['estado' => 'entregado']);
             } else {
                 // Descontar stock del inventario (sin series)
-                $cantidadRestante = $cantidadSolicitada;
-                foreach ($prod->warehouses as $warehouse) {
-                    if ($cantidadRestante <= 0) break;
-                    
-                    $stockActual = $warehouse->pivot->stock ?? 0;
-                    if ($stockActual > 0) {
-                        $cantidadADescontar = min($stockActual, $cantidadRestante);
-                        DB::table('warehouse_product')
-                            ->where('warehouse_id', $warehouse->id)
-                            ->where('product_id', $prod->id)
-                            ->decrement('stock', $cantidadADescontar);
-                        $cantidadRestante -= $cantidadADescontar;
+            $cantidadRestante = $cantidadSolicitada;
+            foreach ($prod->warehouses as $warehouse) {
+                if ($cantidadRestante <= 0) break;
+                
+                $stockActual = $warehouse->pivot->stock ?? 0;
+                if ($stockActual > 0) {
+                    $cantidadADescontar = min($stockActual, $cantidadRestante);
+                    DB::table('warehouse_product')
+                        ->where('warehouse_id', $warehouse->id)
+                        ->where('product_id', $prod->id)
+                        ->decrement('stock', $cantidadADescontar);
+                    $cantidadRestante -= $cantidadADescontar;
                     }
                 }
             }

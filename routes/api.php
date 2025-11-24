@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CourierController;
+use App\Http\Controllers\Api\TrackingController;
 use App\Models\SerialNumber;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -34,5 +35,15 @@ Route::prefix('courier')->group(function () {
         
         // Sales (ventas brutas)
         Route::get('/sales', [CourierController::class, 'sales']);
+        
+        // Tracking en tiempo real
+        Route::post('/tracking/update', [TrackingController::class, 'updateLocation']);
+        Route::post('/tracking/stop', [TrackingController::class, 'stopTracking']);
     });
+});
+
+// API para tracking (admin)
+Route::middleware('auth:sanctum')->prefix('tracking')->group(function () {
+    Route::get('/drivers', [TrackingController::class, 'getAllActiveDrivers']);
+    Route::get('/drivers/{driverId}', [TrackingController::class, 'getDriverLocation']);
 });

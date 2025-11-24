@@ -15,6 +15,7 @@ use App\Http\Controllers\{
     RoleController,
     CustomerController,
     WarrantyController,
+    TrackingController,
     Admin\ReportController as AdminReportController
 };
 
@@ -133,6 +134,19 @@ Route::middleware(['auth'])->group(function () {
     // ================== RUTAS Y ENTREGAS ==================
     Route::get('/rutas', [RouteController::class, 'index'])->name('rutas.index');
     Route::get('/pedidos/{pedido}/ruta', [RouteController::class, 'compute'])->name('pedidos.ruta');
+
+    // ================== TRACKING EN TIEMPO REAL ==================
+    Route::get('/tracking/mapa', [TrackingController::class, 'map'])
+        ->name('tracking.map')
+        ->middleware('permission:ver-dashboard');
+    
+    Route::get('/tracking/drivers', [TrackingController::class, 'getActiveDrivers'])
+        ->name('tracking.drivers')
+        ->middleware('permission:ver-dashboard');
+    
+    Route::get('/tracking/drivers/{driverId}/history', [TrackingController::class, 'getDriverHistory'])
+        ->name('tracking.driver.history')
+        ->middleware('permission:ver-dashboard');
 
     // ================== ROLES / PERMISOS ==================
     Route::get('/roles/seed', [RoleController::class, 'seed'])->name('roles.seed');
