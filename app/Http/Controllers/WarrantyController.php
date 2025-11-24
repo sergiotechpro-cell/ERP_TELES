@@ -7,6 +7,7 @@ use App\Models\SerialNumber;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class WarrantyController extends Controller
 {
@@ -57,5 +58,61 @@ class WarrantyController extends Controller
         return redirect()
             ->route('garantias.index')
             ->with('ok', 'Garantía registrada (#'.$claim->id.').');
+    }
+
+    public function module(Request $request)
+    {
+        $serialQuery = strtoupper(trim($request->input('serial', '')));
+        $serialResult = null;
+
+        if ($serialQuery !== '') {
+            $serial = SerialNumber::with('warehouseProduct.product')
+                ->where('numero_serie', $serialQuery)
+                ->first();
+
+            if ($serial) {
+                $lastClaim = WarrantyClaim::with(['order.customer','product'])
+                    ->where('serial_number_id', $serial->id)
+                    ->latest()
+                    ->first();
+
+                $serialResult = [
+                    'found' => true,
+                    'serial' => $serial,
+                    'claim' => $lastClaim,
+                ];
+            } else {
+                $serialResult = [
+                    'found' => false,
+                    'serial' => null,
+                    'claim' => null,
+                ];
+            }
+        }
+
+        $openClaims = WarrantyClaim::with(['product','serialNumber','order.customer'])
+            ->where('status', '!=', 'cerrada')
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        return view('garantias.module', [
+            'serialQuery' => $serialQuery,
+            'serialResult' => $serialResult,
+            'openClaims' => $openClaims,
+        ]);
+    }
+
+    public function close(WarrantyClaim $garantia)
+    {
+        if ($garantia->status === 'cerrada') {
+            throw ValidationException::withMessages([
+                'garantia' => 'Esta garantía ya está cerrada.',
+            ]);
+        }
+
+        $garantia->update(['status' => 'cerrada']);
+
+        return back()->with('ok', 'Garantía #' . $garantia->id . ' cerrada correctamente.');
     }
 }

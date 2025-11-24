@@ -10,17 +10,17 @@
                 size: 80mm auto;
                 margin: 0;
             }
-            body {
+            html, body {
+                width: 80mm;
                 margin: 0;
                 padding: 0;
             }
             .ticket {
                 page-break-after: always;
+                break-after: page;
+                break-inside: avoid;
                 margin: 0;
                 padding: 10px;
-            }
-            .ticket:last-child {
-                page-break-after: auto;
             }
             .no-print {
                 display: none;
@@ -37,6 +37,7 @@
             margin-bottom: 20px;
             padding: 10px;
             border: 1px dashed #ccc;
+            box-sizing: border-box;
         }
         .header {
             text-align: center;

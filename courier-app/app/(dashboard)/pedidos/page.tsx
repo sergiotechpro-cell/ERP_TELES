@@ -9,6 +9,7 @@ export default function PedidosPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [optimizing, setOptimizing] = useState(false);
 
   useEffect(() => {
     loadAssignments();
@@ -30,6 +31,51 @@ export default function PedidosPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const pendingAssignments = assignments.filter(a => a.estado !== 'entregado');
+  const optimizableAssignments = pendingAssignments.filter(
+    a => Number.isFinite(a.pedido.lat) && Number.isFinite(a.pedido.lng)
+  );
+  const canOptimize = optimizableAssignments.length > 2;
+
+  const handleOptimizeRoutes = () => {
+    if (!canOptimize || optimizing) return;
+    setOptimizing(true);
+
+    try {
+      const sorted = [...optimizableAssignments].sort(
+        (a, b) => new Date(a.asignado_at).getTime() - new Date(b.asignado_at).getTime()
+      );
+
+      const originPoint = sorted[0]?.origen;
+      const stops = sorted.map(assignment => `${assignment.pedido.lat},${assignment.pedido.lng}`);
+
+      if (stops.length < 2) {
+        alert('Se necesitan al menos dos puntos con coordenadas para optimizar.');
+        return;
+      }
+
+      const originParam = originPoint ? `${originPoint.lat},${originPoint.lng}` : '';
+      const destination = stops[stops.length - 1];
+      const waypointsList = stops.slice(0, -1);
+      const waypointParam = waypointsList.length
+        ? `optimize:true|${waypointsList.join('|')}`
+        : '';
+
+      let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate';
+      if (originParam) {
+        url += `&origin=${encodeURIComponent(originParam)}`;
+      }
+      url += `&destination=${encodeURIComponent(destination)}`;
+      if (waypointParam) {
+        url += `&waypoints=${encodeURIComponent(waypointParam)}`;
+      }
+
+      window.open(url, '_blank');
+    } finally {
+      setTimeout(() => setOptimizing(false), 600);
     }
   };
 
@@ -84,6 +130,24 @@ export default function PedidosPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
           {error}
+        </div>
+      )}
+
+      {canOptimize && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-blue-900 font-semibold text-base sm:text-lg">Optimiza tus rutas</p>
+            <p className="text-sm sm:text-base text-blue-700">
+              Tienes {optimizableAssignments.length} destinos pendientes. Genera una sola ruta con optimización automática.
+            </p>
+          </div>
+          <button
+            onClick={handleOptimizeRoutes}
+            disabled={optimizing}
+            className="inline-flex items-center justify-center bg-blue-600 text-white px-4 sm:px-6 py-2.5 rounded-lg font-semibold text-sm sm:text-base hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          >
+            {optimizing ? 'Optimizando...' : 'Optimizar rutas'}
+          </button>
         </div>
       )}
 

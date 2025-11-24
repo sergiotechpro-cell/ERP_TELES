@@ -10,6 +10,11 @@ class SaleItem extends Model
         'cantidad',
         'precio_unitario',
         'costo_unitario',
+        'seriales',
+    ];
+
+    protected $casts = [
+        'seriales' => 'array',
     ];
 
     public function sale() {

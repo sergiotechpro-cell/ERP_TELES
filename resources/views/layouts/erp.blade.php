@@ -283,6 +283,13 @@
             </div>
 
             <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('garantias.*') ? 'active' : '' }}" href="{{ route('garantias.module') }}">
+                    <i class="bi bi-shield-check"></i> 
+                    <span>Garantías</span>
+                </a>
+            </div>
+
+            <div class="nav-item">
                 <a class="nav-link {{ request()->routeIs('calendario.*') ? 'active' : '' }}" href="{{ route('calendario.index') }}">
                     <i class="bi bi-calendar3"></i> 
                     <span>Calendario</span>
@@ -302,6 +309,13 @@
                 <a class="nav-link {{ request()->routeIs('pos.*') ? 'active' : '' }}" href="{{ route('pos.index') }}">
                     <i class="bi bi-shop"></i> 
                     <span>Punto de Venta</span>
+                </a>
+            </div>
+
+            <div class="nav-item">
+                <a class="nav-link {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}" href="{{ route('admin.reports.sales') }}">
+                    <i class="bi bi-bar-chart-line"></i> 
+                    <span>Reportes</span>
                 </a>
             </div>
 

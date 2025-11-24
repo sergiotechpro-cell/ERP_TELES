@@ -9,9 +9,12 @@ use App\Models\Payment;
 use App\Models\ChecklistItem;
 use App\Models\Customer;
 use App\Models\DeliveryAssignment;
+use App\Models\SerialNumber;
+use App\Models\WarehouseProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PosController extends Controller
 {
@@ -119,6 +122,8 @@ class PosController extends Controller
             'items.*.product_id'       => ['required','integer','exists:products,id'],
             'items.*.cantidad'         => ['required','integer','min:1'],
             'items.*.precio_unitario'  => ['required','numeric','min:0'],
+            'items.*.seriales'         => ['nullable','array'],
+            'items.*.seriales.*'       => ['string','max:255'],
         ], [
             'direccion_entrega.required' => 'La dirección de entrega es obligatoria.',
             'costo_envio.required' => 'El costo de envío es obligatorio.',
@@ -132,13 +137,15 @@ class PosController extends Controller
             'items.min' => 'Debes agregar al menos un producto.',
         ]);
 
+        $data['items'] = $this->normalizeSeriales($data['items']);
+
         // Obtener primera bodega disponible para asignar productos
         $primeraBodega = \App\Models\Warehouse::orderBy('id')->first();
         if (!$primeraBodega) {
             return back()->withErrors(['error' => 'No hay bodegas registradas. Debes crear al menos una bodega primero.'])->withInput();
         }
 
-        DB::transaction(function() use ($data, $primeraBodega, &$pedidoId, &$choferAsignado) {
+        DB::transaction(function() use ($data, $primeraBodega, &$pedidoId) {
             $pedido = \App\Models\Order::create([
                 'customer_id'       => null,
                 'created_by'        => Auth::id(),
@@ -152,6 +159,7 @@ class PosController extends Controller
 
             $totalPedido = 0;
             foreach ($data['items'] as $it) {
+                $serialModels = ($it['__serialModels'] ?? collect());
                 $prod = \App\Models\Product::with('warehouses')->find($it['product_id']);
                 if (!$prod) {
                     throw new \Exception("Producto no encontrado: {$it['product_id']}");
@@ -176,21 +184,33 @@ class PosController extends Controller
                     'cantidad'        => $cantidadSolicitada,
                     'precio_unitario' => (float) $it['precio_unitario'],
                     'costo_unitario'  => (float) $costo,
+                    'seriales'        => $it['seriales'] ?? [],
                 ]);
                 
-                // Descontar stock del inventario
-                $cantidadRestante = $cantidadSolicitada;
-                foreach ($prod->warehouses as $warehouse) {
-                    if ($cantidadRestante <= 0) break;
-                    
-                    $stockActual = $warehouse->pivot->stock ?? 0;
-                    if ($stockActual > 0) {
-                        $cantidadADescontar = min($stockActual, $cantidadRestante);
-                        DB::table('warehouse_product')
-                            ->where('warehouse_id', $warehouse->id)
-                            ->where('product_id', $prod->id)
-                            ->decrement('stock', $cantidadADescontar);
-                        $cantidadRestante -= $cantidadADescontar;
+                if ($serialModels->isNotEmpty()) {
+                    foreach ($serialModels as $serialModel) {
+                        $wp = WarehouseProduct::lockForUpdate()->find($serialModel->warehouse_product_id);
+                        if (!$wp || $wp->stock <= 0) {
+                            throw new \Exception("No hay stock disponible para el número de serie {$serialModel->numero_serie}.");
+                        }
+                        $wp->decrement('stock', 1);
+                    }
+                    SerialNumber::whereIn('id', $serialModels->pluck('id'))->update(['estado' => 'apartado']);
+                } else {
+                    // Descontar stock del inventario (sin series)
+                    $cantidadRestante = $cantidadSolicitada;
+                    foreach ($prod->warehouses as $warehouse) {
+                        if ($cantidadRestante <= 0) break;
+                        
+                        $stockActual = $warehouse->pivot->stock ?? 0;
+                        if ($stockActual > 0) {
+                            $cantidadADescontar = min($stockActual, $cantidadRestante);
+                            DB::table('warehouse_product')
+                                ->where('warehouse_id', $warehouse->id)
+                                ->where('product_id', $prod->id)
+                                ->decrement('stock', $cantidadADescontar);
+                            $cantidadRestante -= $cantidadADescontar;
+                        }
                     }
                 }
                 
@@ -246,7 +266,11 @@ class PosController extends Controller
         'items.*.product_id'       => ['required','integer','exists:products,id'],
         'items.*.cantidad'         => ['required','integer','min:1'],
         'items.*.precio_unitario'  => ['required','numeric','min:0'],
+        'items.*.seriales'         => ['nullable','array'],
+        'items.*.seriales.*'       => ['string','max:255'],
     ]);
+
+    $data['items'] = $this->normalizeSeriales($data['items']);
 
     DB::transaction(function() use ($data, &$saleId) {
         // Obtener usuario vendedor y calcular comisión
@@ -271,6 +295,7 @@ class PosController extends Controller
         $saleId = $sale->id;
 
         foreach ($data['items'] as $it) {
+            $serialModels = ($it['__serialModels'] ?? collect());
             // Trae el producto con stock
             $prod = \App\Models\Product::with('warehouses')->find($it['product_id']);
             if (!$prod) {
@@ -293,21 +318,33 @@ class PosController extends Controller
                 'cantidad'        => $cantidadSolicitada,
                 'precio_unitario' => $it['precio_unitario'],
                 'costo_unitario'  => $costo,
+                'seriales'        => $it['seriales'] ?? [],
             ]);
             
-            // Descontar stock del inventario
-            $cantidadRestante = $cantidadSolicitada;
-            foreach ($prod->warehouses as $warehouse) {
-                if ($cantidadRestante <= 0) break;
-                
-                $stockActual = $warehouse->pivot->stock ?? 0;
-                if ($stockActual > 0) {
-                    $cantidadADescontar = min($stockActual, $cantidadRestante);
-                    DB::table('warehouse_product')
-                        ->where('warehouse_id', $warehouse->id)
-                        ->where('product_id', $prod->id)
-                        ->decrement('stock', $cantidadADescontar);
-                    $cantidadRestante -= $cantidadADescontar;
+            if ($serialModels->isNotEmpty()) {
+                foreach ($serialModels as $serialModel) {
+                    $wp = WarehouseProduct::lockForUpdate()->find($serialModel->warehouse_product_id);
+                    if (!$wp || $wp->stock <= 0) {
+                        throw new \Exception("No hay stock disponible para el número de serie {$serialModel->numero_serie}.");
+                    }
+                    $wp->decrement('stock', 1);
+                }
+                SerialNumber::whereIn('id', $serialModels->pluck('id'))->update(['estado' => 'entregado']);
+            } else {
+                // Descontar stock del inventario (sin series)
+                $cantidadRestante = $cantidadSolicitada;
+                foreach ($prod->warehouses as $warehouse) {
+                    if ($cantidadRestante <= 0) break;
+                    
+                    $stockActual = $warehouse->pivot->stock ?? 0;
+                    if ($stockActual > 0) {
+                        $cantidadADescontar = min($stockActual, $cantidadRestante);
+                        DB::table('warehouse_product')
+                            ->where('warehouse_id', $warehouse->id)
+                            ->where('product_id', $prod->id)
+                            ->decrement('stock', $cantidadADescontar);
+                        $cantidadRestante -= $cantidadADescontar;
+                    }
                 }
             }
         }
@@ -343,4 +380,57 @@ class PosController extends Controller
         return redirect()->route('pos.index')->with('ok', 'Venta eliminada.');
     }
 
+    protected function normalizeSeriales(array $items): array
+    {
+        foreach ($items as $idx => &$item) {
+            $serialModels = collect();
+            $seriales = collect($item['seriales'] ?? [])
+                ->map(fn ($sn) => strtoupper(trim($sn)))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($seriales) {
+                $cantidadSolicitada = (int) $item['cantidad'];
+                if ($cantidadSolicitada !== count($seriales)) {
+                    throw ValidationException::withMessages([
+                        "items.$idx.seriales" => "Debes capturar exactamente {$cantidadSolicitada} números de serie para el producto seleccionado.",
+                    ]);
+                }
+
+                $serialModels = SerialNumber::whereIn('numero_serie', $seriales)
+                    ->with('warehouseProduct')
+                    ->get()
+                    ->keyBy('numero_serie');
+
+                foreach ($seriales as $serial) {
+                    $serialModel = $serialModels[$serial] ?? null;
+
+                    if (!$serialModel) {
+                        throw ValidationException::withMessages([
+                            "items.$idx.seriales" => "El número de serie {$serial} no existe en inventario.",
+                        ]);
+                    }
+
+                    if ((int) $serialModel->warehouseProduct?->product_id !== (int) $item['product_id']) {
+                        throw ValidationException::withMessages([
+                            "items.$idx.seriales" => "El número de serie {$serial} no pertenece al producto seleccionado.",
+                        ]);
+                    }
+
+                    if ($serialModel->estado !== 'disponible') {
+                        throw ValidationException::withMessages([
+                            "items.$idx.seriales" => "El número de serie {$serial} no está disponible (estado: {$serialModel->estado}).",
+                        ]);
+                    }
+                }
+            }
+
+            $item['seriales'] = $seriales;
+            $item['__serialModels'] = $serialModels->values();
+        }
+
+        return $items;
+    }
 }

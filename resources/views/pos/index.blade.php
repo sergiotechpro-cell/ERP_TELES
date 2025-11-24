@@ -432,6 +432,7 @@
   
   let autocomplete = null;
   let selectedPlace = null;
+  const serialCache = {};
   
   // Autocompletar campos cuando se selecciona un cliente
   customerSelect.addEventListener('change', function() {
@@ -506,18 +507,153 @@
     document.querySelector('input[name="subtotal"]').value = sum.toFixed(2);
   }
 
+  function formatSerial(value){
+    return (value || '').trim().toUpperCase();
+  }
+
+  function renderSerialTags(container, serials){
+    if(!container) return;
+    if(!serials.length){
+      container.innerHTML = '<span class="text-secondary">Sin números capturados.</span>';
+      return;
+    }
+    container.innerHTML = serials.map(sn => `
+      <span class="badge bg-light text-dark border me-1 mb-1 d-inline-flex align-items-center gap-2">
+        <span>${sn}</span>
+        <button type="button" class="btn btn-link p-0 text-danger remove-serial" data-serial="${sn}" title="Eliminar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </span>
+    `).join('');
+  }
+
+  async function loadSerialOptions(productId, listEl){
+    if(!productId || !listEl) return;
+    if(serialCache[productId]){
+      listEl.innerHTML = serialCache[productId].map(sn => `<option value="${sn}"></option>`).join('');
+      return;
+    }
+    try{
+      const res = await fetch(`/api/seriales?product_id=${productId}`);
+      if(!res.ok) return;
+      const data = await res.json();
+      serialCache[productId] = (data || []).map(item => item.numero_serie);
+      listEl.innerHTML = serialCache[productId].map(sn => `<option value="${sn}"></option>`).join('');
+    }catch(err){
+      console.error('Error cargando números de serie', err);
+    }
+  }
+
+  function setupSerialControls(tr){
+    const serialWrapper = tr.querySelector('.serial-wrapper');
+    if(!serialWrapper) return;
+    const serialSearch = serialWrapper.querySelector('.serial-search');
+    const serialAddBtn = serialWrapper.querySelector('.add-serial');
+    const serialTags = serialWrapper.querySelector('.serial-tags');
+    const serialHidden = serialWrapper.querySelector('.serials-field');
+    const serialList = serialWrapper.querySelector('datalist');
+
+    const getSerials = () => {
+      try {
+        return JSON.parse(serialHidden.value || '[]');
+      } catch (error) {
+        return [];
+      }
+    };
+
+    const setSerials = (items = []) => {
+      serialHidden.value = JSON.stringify(items);
+      renderSerialTags(serialTags, items);
+    };
+
+    const addSerial = () => {
+      const formatted = formatSerial(serialSearch.value);
+      if(!formatted) return;
+      const serials = getSerials();
+      if(serials.includes(formatted)){
+        serialSearch.value = '';
+        return;
+      }
+      const qtyInput = tr.querySelector('.qty');
+      const qty = parseInt(qtyInput?.value || 0);
+      if(qty && serials.length >= qty){
+        alert(`Este producto requiere ${qty} número(s) de serie. Elimina uno antes de agregar otro.`);
+        return;
+      }
+      serials.push(formatted);
+      setSerials(serials);
+      serialSearch.value = '';
+    };
+
+    serialAddBtn?.addEventListener('click', addSerial);
+    serialSearch?.addEventListener('keydown', (ev)=>{
+      if(ev.key === 'Enter'){
+        ev.preventDefault();
+        addSerial();
+      }
+    });
+    serialTags?.addEventListener('click', (ev)=>{
+      const button = ev.target.closest('.remove-serial');
+      if(!button) return;
+      const serial = button.dataset.serial;
+      const serials = getSerials().filter(sn => sn !== serial);
+      setSerials(serials);
+    });
+
+    tr.__serialControls = {
+      wrapper: serialWrapper,
+      search: serialSearch,
+      tags: serialTags,
+      hidden: serialHidden,
+      list: serialList,
+      reset: () => setSerials([]),
+      getSerials,
+      setSerials,
+    };
+
+    setSerials([]);
+  }
+
+  function handleSerialVisibility(tr, productId){
+    const controls = tr.__serialControls;
+    if(!controls) return;
+    controls.reset();
+    controls.search.value = '';
+    if(!productId){
+      controls.wrapper.classList.add('d-none');
+      if(controls.list) controls.list.innerHTML = '';
+      return;
+    }
+    controls.wrapper.classList.remove('d-none');
+    loadSerialOptions(productId, controls.list);
+  }
+
   function optionsProductos(){
     return productos.map(p => `<option value="${p.id}" data-price="${p.precio}" data-stock="${p.stock}">${p.descripcion} ${p.stock > 0 ? `(${p.stock} disponibles)` : '(sin stock)'}</option>`).join('');
   }
 
   function addRow(preset=null){
     const tr = document.createElement('tr');
+    const serialListId = `serial-list-${Date.now()}-${Math.floor(Math.random()*1000)}`;
     tr.innerHTML = `
       <td>
         <select class="form-select prod">
           <option value="">Selecciona...</option>
           ${optionsProductos()}
         </select>
+        <div class="serial-wrapper mt-2 d-none">
+          <label class="form-label mb-1 small text-uppercase text-muted">Números de serie</label>
+          <div class="input-group input-group-sm mb-2">
+            <input type="search" class="form-control serial-search" placeholder="Escribe o busca un número de serie" list="${serialListId}">
+            <button type="button" class="btn btn-outline-secondary add-serial" title="Agregar número de serie">
+              <i class="bi bi-plus-lg"></i>
+            </button>
+          </div>
+          <datalist id="${serialListId}"></datalist>
+          <div class="serial-tags small text-secondary">Sin números capturados.</div>
+          <input type="hidden" class="serials-field" value="[]">
+          <small class="text-secondary d-block mt-1">Captura manualmente o selecciona de la lista y presiona Enter.</small>
+        </div>
       </td>
       <td>
         <input type="number" class="form-control qty" min="1" value="${preset?.qty ?? 1}">
@@ -532,6 +668,7 @@
       </td>
     `;
     tbody.appendChild(tr);
+    setupSerialControls(tr);
 
     const prodSel = tr.querySelector('.prod');
     const qtyI    = tr.querySelector('.qty');
@@ -568,6 +705,7 @@
         
         calc();
       }
+      handleSerialVisibility(tr, prodSel.value);
     });
     qtyI.addEventListener('input', function(){
       const opt = prodSel.selectedOptions[0];
@@ -608,6 +746,7 @@
     if(preset?.id){
       prodSel.value = String(preset.id);
       priceI.value  = Number(preset.price||0);
+      handleSerialVisibility(tr, prodSel.value);
     }
     calc();
   }
@@ -985,12 +1124,26 @@
     [...tbody.querySelectorAll('tr')].forEach((tr, idx) => {
       const prodSel = tr.querySelector('.prod');
       const qtyI = tr.querySelector('.qty');
+      const serialField = tr.querySelector('.serials-field');
+      let serialList = [];
+      if (serialField) {
+        try {
+          serialList = JSON.parse(serialField.value || '[]');
+        } catch (error) {
+          serialList = [];
+        }
+      }
       
       if (prodSel.value) {
         const opt = prodSel.selectedOptions[0];
         if (opt) {
           const stock = parseInt(opt.dataset.stock || 0);
           const qty = parseInt(qtyI.value || 0);
+
+          if (serialList.length > 0 && serialList.length !== qty) {
+            hasErrors = true;
+            errorMessages.push(`La línea ${idx + 1} requiere ${qty} número(s) de serie y capturaste ${serialList.length}.`);
+          }
           
           if (stock === 0) {
             hasErrors = true;
@@ -1035,6 +1188,23 @@
           i.type='hidden'; i.name=`items[${idx}][${k}]`; i.value=v;
           f.appendChild(i);
         });
+
+      const serialField = tr.querySelector('.serials-field');
+      if (serialField) {
+        let serialList = [];
+        try {
+          serialList = JSON.parse(serialField.value || '[]');
+        } catch (error) {
+          serialList = [];
+        }
+        serialList.forEach(serial => {
+          const s = document.createElement('input');
+          s.type = 'hidden';
+          s.name = `items[${idx}][seriales][]`;
+          s.value = serial;
+          f.appendChild(s);
+        });
+      }
     });
   });
 </script>

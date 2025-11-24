@@ -114,6 +114,70 @@
     </div>
   </div>
 
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+        <div class="card-body">
+          <div class="small text-secondary mb-1">
+            <i class="bi bi-shop me-1 text-primary"></i> POS mes actual
+          </div>
+          <div class="display-6 fw-bold text-primary">${{ number_format((float)($ventasPosMesActual ?? 0), 2) }}</div>
+          <small class="text-secondary">{{ now()->isoFormat('MMMM YYYY') }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+        <div class="card-body">
+          <div class="small text-secondary mb-1">
+            <i class="bi bi-truck me-1 text-info"></i> Pedidos mes actual
+          </div>
+          <div class="display-6 fw-bold text-info">${{ number_format((float)($ventasPedidosMesActual ?? 0), 2) }}</div>
+          <small class="text-secondary">Incluye envíos</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+        <div class="card-body">
+          <div class="small text-secondary mb-1">
+            <i class="bi bi-shield-check me-1 text-danger"></i> Garantías activas
+          </div>
+          <div class="display-6 fw-bold text-danger">{{ $garantiasAbiertas ?? 0 }}</div>
+          <small class="text-secondary">Módulo de garantías</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      @php
+        $serialDisponibles = $serialStats['disponible'] ?? 0;
+        $serialApartados = $serialStats['apartado'] ?? 0;
+        $serialEntregados = $serialStats['entregado'] ?? 0;
+      @endphp
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+        <div class="card-body">
+          <div class="small text-secondary mb-1">
+            <i class="bi bi-upc-scan me-1 text-muted"></i> Series
+          </div>
+          <div class="d-flex justify-content-between">
+            <div>
+              <div class="fw-bold">{{ $serialDisponibles }}</div>
+              <small class="text-secondary">Disponibles</small>
+            </div>
+            <div>
+              <div class="fw-bold">{{ $serialApartados }}</div>
+              <small class="text-secondary">Apartados</small>
+            </div>
+            <div>
+              <div class="fw-bold">{{ $serialEntregados }}</div>
+              <small class="text-secondary">Entregados</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {{-- GRÁFICA --}}
   <div class="card border-0 shadow-sm mb-4" style="border-radius:16px;">
     <div class="card-body">
@@ -243,6 +307,71 @@
                 </li>
               @endforeach
             </ul>
+          @endif
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-3">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+        <div class="card-body">
+          <h6 class="fw-bold mb-3"><i class="bi bi-star me-2"></i>Productos POS destacados</h6>
+          @if(($topProductosPos->count() ?? 0) === 0)
+            <x-empty icon="bi-box" title="Sin datos" text="Aún no hay suficientes ventas POS." />
+          @else
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Producto</th>
+                    <th class="text-center">Unidades</th>
+                    <th class="text-end">Monto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @foreach($topProductosPos as $row)
+                    <tr>
+                      <td>{{ $row->product?->descripcion ?? '—' }}</td>
+                      <td class="text-center"><span class="badge text-bg-primary">{{ $row->unidades }}</span></td>
+                      <td class="text-end fw-semibold">${{ number_format($row->monto,2) }}</td>
+                    </tr>
+                  @endforeach
+                </tbody>
+              </table>
+            </div>
+          @endif
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100" style="border-radius:16px;">
+        <div class="card-body">
+          <h6 class="fw-bold mb-3"><i class="bi bi-truck me-2"></i>Pedidos con mayor ingreso</h6>
+          @if(($topPedidosIngresos->count() ?? 0) === 0)
+            <x-empty icon="bi-bag" title="Sin datos" text="Aún no hay pedidos con ingresos registrados." />
+          @else
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Pedido</th>
+                    <th>Cliente</th>
+                    <th class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @foreach($topPedidosIngresos as $row)
+                    <tr>
+                      <td>#{{ $row->order_id }}</td>
+                      <td>{{ $row->order?->customer?->nombre ?? '—' }}</td>
+                      <td class="text-end fw-semibold">${{ number_format($row->total ?? 0, 2) }}</td>
+                    </tr>
+                  @endforeach
+                </tbody>
+              </table>
+            </div>
           @endif
         </div>
       </div>

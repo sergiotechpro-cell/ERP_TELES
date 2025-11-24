@@ -10,7 +10,15 @@
                 size: 80mm auto;
                 margin: 0;
             }
-            body {
+            html, body {
+                width: 80mm;
+                margin: 0;
+                padding: 0;
+            }
+            .ticket {
+                page-break-after: always;
+                break-after: page;
+                break-inside: avoid;
                 margin: 0;
                 padding: 10px;
             }
@@ -24,6 +32,12 @@
             max-width: 80mm;
             margin: 0 auto;
             padding: 10px;
+        }
+        .ticket {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            box-sizing: border-box;
         }
         .header {
             text-align: center;
@@ -68,40 +82,42 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2 style="margin: 0; font-size: 16px;">NÚMERO DE SERIE</h2>
-    </div>
-    
-    <div class="content">
-        <div class="value">
-            <span class="label">Producto:</span><br>
-            {{ $serialNumber->warehouseProduct->product->descripcion ?? 'N/A' }}
+    <div class="ticket">
+        <div class="header">
+            <h2 style="margin: 0; font-size: 16px;">NÚMERO DE SERIE</h2>
         </div>
         
-        <div class="value">
-            <span class="label">Número de Serie:</span>
+        <div class="content">
+            <div class="value">
+                <span class="label">Producto:</span><br>
+                {{ $serialNumber->warehouseProduct->product->descripcion ?? 'N/A' }}
+            </div>
+            
+            <div class="value">
+                <span class="label">Número de Serie:</span>
+            </div>
+            
+            <div class="barcode">
+                {{ $serialNumber->numero_serie }}
+            </div>
+            
+            <div class="value">
+                <span class="label">Estado:</span> {{ ucfirst($serialNumber->estado) }}
+            </div>
+            
+            <div class="value">
+                <span class="label">Fecha:</span> {{ $serialNumber->created_at->format('d/m/Y H:i') }}
+            </div>
+            
+            <div class="value">
+                <span class="label">ID:</span> #{{ $serialNumber->id }}
+            </div>
         </div>
         
-        <div class="barcode">
-            {{ $serialNumber->numero_serie }}
+        <div class="footer">
+            <div>ERP Teleserp</div>
+            <div>{{ now()->format('d/m/Y H:i:s') }}</div>
         </div>
-        
-        <div class="value">
-            <span class="label">Estado:</span> {{ ucfirst($serialNumber->estado) }}
-        </div>
-        
-        <div class="value">
-            <span class="label">Fecha:</span> {{ $serialNumber->created_at->format('d/m/Y H:i') }}
-        </div>
-        
-        <div class="value">
-            <span class="label">ID:</span> #{{ $serialNumber->id }}
-        </div>
-    </div>
-    
-    <div class="footer">
-        <div>ERP Teleserp</div>
-        <div>{{ now()->format('d/m/Y H:i:s') }}</div>
     </div>
     
     <div class="no-print">

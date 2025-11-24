@@ -13,7 +13,9 @@ use App\Http\Controllers\{
     RouteController,
     PosController,
     RoleController,
-    CustomerController
+    CustomerController,
+    WarrantyController,
+    Admin\ReportController as AdminReportController
 };
 
 /*
@@ -117,6 +119,16 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
     Route::get('/pos/{pos}', [PosController::class, 'show'])->name('pos.show');
     Route::delete('/pos/{pos}', [PosController::class, 'destroy'])->name('pos.destroy');
+
+    // ================== GARANTÍAS ==================
+    Route::get('/garantias/modulo', [WarrantyController::class, 'module'])->name('garantias.module');
+    Route::post('/garantias/{garantia}/cerrar', [WarrantyController::class, 'close'])->name('garantias.close');
+    Route::resource('garantias', WarrantyController::class)->only(['index','create','store']);
+
+    // ================== ADMIN / REPORTES ==================
+    Route::get('/admin/reportes/ventas', [AdminReportController::class, 'sales'])
+        ->name('admin.reports.sales')
+        ->middleware('permission:ver-dashboard');
 
     // ================== RUTAS Y ENTREGAS ==================
     Route::get('/rutas', [RouteController::class, 'index'])->name('rutas.index');
