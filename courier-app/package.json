@@ -11,7 +11,13 @@
     "cap:add:ios": "npx cap add ios",
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios",
-    "cap:build": "npm run build && npx cap sync"
+    "cap:build": "npm run build && npx cap sync",
+    "cap:build:android": "npm run build && npx cap sync && cd android && ./gradlew assembleDebug",
+    "cap:build:android:release": "npm run build && npx cap sync && cd android && ./gradlew assembleRelease",
+    "cap:build:all": "npm run build && npx cap sync",
+    "cap:run:android": "npm run cap:build && npx cap run android",
+    "cap:copy": "npx cap copy",
+    "cap:update": "npm install @capacitor/cli@latest @capacitor/core@latest @capacitor/android@latest @capacitor/ios@latest @capacitor/app@latest @capacitor/haptics@latest @capacitor/keyboard@latest @capacitor/status-bar@latest"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

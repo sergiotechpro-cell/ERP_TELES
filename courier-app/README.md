@@ -6,11 +6,42 @@ Aplicación web responsiva para choferes de entrega, desarrollada con Next.js 14
 
 - ✅ Login con email y contraseña
 - 📦 Lista de pedidos asignados
-- 🗺️ Visualización de ruta en Google Maps
+- 🗺️ **NUEVO: Optimización inteligente de múltiples rutas**
+- 🎯 **NUEVO: Ordenamiento por prioridad (fecha de asignación)**
 - 🚀 Iniciar ruta con un click
 - ✅ Completar entrega con un click
 - 📱 Diseño responsivo optimizado para móviles
-- 🧭 Integración con Google Maps Navigation
+- 🧭 Integración directa con Google Maps Navigation
+- 🎨 UI moderna con gradientes y feedback visual
+
+## ✨ Optimización de Rutas
+
+La app ahora incluye una funcionalidad avanzada de optimización de rutas:
+
+- **Genera una sola ruta optimizada** para múltiples pedidos pendientes
+- **Ordena por prioridad**: Los pedidos más antiguos (asignados primero) tienen mayor prioridad
+- **Vista previa**: Muestra la lista de pedidos ordenados antes de abrir Google Maps
+- **Optimización automática**: Google Maps calcula la ruta más eficiente respetando el orden
+- **Mínimo 2 pedidos**: Se activa automáticamente cuando hay 2 o más destinos con coordenadas
+
+## 📖 Cómo Usar la Optimización de Rutas
+
+1. **Inicia sesión** en la app con tu cuenta de chofer
+2. Ve a la sección **"Mis Pedidos"**
+3. Si tienes **2 o más pedidos pendientes** con coordenadas, verás el botón **"Optimizar Rutas"**
+4. Haz clic en el botón y confirma el orden de entregas
+5. La app abrirá **Google Maps** con la ruta optimizada lista para navegar
+6. Sigue las instrucciones de Google Maps para completar todas las entregas
+
+### 🎯 Prioridad de Entregas
+
+Los pedidos se ordenan automáticamente por:
+1. **Fecha de asignación** (más antiguos primero)
+2. **Hora de asignación** (si tienen la misma fecha)
+
+Esto asegura que los pedidos urgentes se entreguen primero.
+
+---
 
 ## 🚀 Inicio Rápido
 

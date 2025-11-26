@@ -1,6 +1,63 @@
 @extends('layouts.erp')
 @section('title','Punto de Venta')
 
+@push('styles')
+<style>
+  /* Estilos mejorados para checkboxes de números de serie */
+  .serial-checkboxes-container {
+    scrollbar-width: thin;
+    scrollbar-color: #667eea #f8f9fa;
+  }
+  
+  .serial-checkboxes-container::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .serial-checkboxes-container::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+  
+  .serial-checkboxes-container::-webkit-scrollbar-thumb {
+    background: #667eea;
+    border-radius: 4px;
+  }
+  
+  .serial-checkboxes-container::-webkit-scrollbar-thumb:hover {
+    background: #5568d3;
+  }
+  
+  .serial-checkbox:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+  }
+  
+  .serial-checkbox:focus {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  }
+  
+  .form-check:has(.serial-checkbox:checked) {
+    background-color: #e7f3ff !important;
+    border-color: #667eea !important;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  }
+  
+  .serial-count-badge {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    animation: pulse 0.3s ease;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+</style>
+@endpush
+
 @section('content')
 <x-flash />
 
@@ -527,18 +584,20 @@
     `).join('');
   }
 
-  async function loadSerialOptions(productId, listEl){
-    if(!productId || !listEl) return;
+  async function loadSerialOptions(productId, controls){
+    if(!productId || !controls) return;
+    
     if(serialCache[productId]){
-      listEl.innerHTML = serialCache[productId].map(sn => `<option value="${sn}"></option>`).join('');
+      controls.loadCheckboxes(serialCache[productId]);
       return;
     }
+    
     try{
       const res = await fetch(`/api/seriales?product_id=${productId}`);
       if(!res.ok) return;
       const data = await res.json();
       serialCache[productId] = (data || []).map(item => item.numero_serie);
-      listEl.innerHTML = serialCache[productId].map(sn => `<option value="${sn}"></option>`).join('');
+      controls.loadCheckboxes(serialCache[productId]);
     }catch(err){
       console.error('Error cargando números de serie', err);
     }
@@ -547,11 +606,11 @@
   function setupSerialControls(tr){
     const serialWrapper = tr.querySelector('.serial-wrapper');
     if(!serialWrapper) return;
-    const serialSearch = serialWrapper.querySelector('.serial-search');
-    const serialAddBtn = serialWrapper.querySelector('.add-serial');
-    const serialTags = serialWrapper.querySelector('.serial-tags');
+    const checkboxContainer = serialWrapper.querySelector('.serial-checkboxes-container');
     const serialHidden = serialWrapper.querySelector('.serials-field');
-    const serialList = serialWrapper.querySelector('datalist');
+    const selectedCountSpan = serialWrapper.querySelector('.selected-count');
+    const countBadge = serialWrapper.querySelector('.serial-count-badge');
+    const qtyInput = tr.querySelector('.qty');
 
     const getSerials = () => {
       try {
@@ -563,52 +622,100 @@
 
     const setSerials = (items = []) => {
       serialHidden.value = JSON.stringify(items);
-      renderSerialTags(serialTags, items);
+      
+      // Actualizar el contador visual
+      if (selectedCountSpan) {
+        selectedCountSpan.textContent = items.length;
+      }
+      
+      // Actualizar el badge con color según cantidad
+      if (countBadge) {
+        if (items.length === 0) {
+          countBadge.className = 'badge bg-secondary text-white serial-count-badge';
+        } else {
+          countBadge.className = 'badge bg-success text-white serial-count-badge';
+        }
+      }
+      
+      // IMPORTANTE: Actualizar la cantidad automáticamente
+      if (qtyInput) {
+        qtyInput.value = items.length > 0 ? items.length : 1;
+        calc(); // Recalcular totales
+      }
     };
 
-    const addSerial = () => {
-      const formatted = formatSerial(serialSearch.value);
-      if(!formatted) return;
+    const updateCheckboxState = () => {
       const serials = getSerials();
-      if(serials.includes(formatted)){
-        serialSearch.value = '';
-        return;
-      }
-      const qtyInput = tr.querySelector('.qty');
-      const qty = parseInt(qtyInput?.value || 0);
-      if(qty && serials.length >= qty){
-        alert(`Este producto requiere ${qty} número(s) de serie. Elimina uno antes de agregar otro.`);
-        return;
-      }
-      serials.push(formatted);
-      setSerials(serials);
-      serialSearch.value = '';
+      const checkboxes = checkboxContainer?.querySelectorAll('.serial-checkbox') || [];
+      checkboxes.forEach(cb => {
+        cb.checked = serials.includes(cb.value);
+      });
     };
 
-    serialAddBtn?.addEventListener('click', addSerial);
-    serialSearch?.addEventListener('keydown', (ev)=>{
-      if(ev.key === 'Enter'){
-        ev.preventDefault();
-        addSerial();
+    const handleCheckboxChange = (checkbox) => {
+      const serials = getSerials();
+      const serialValue = checkbox.value;
+      
+      if (checkbox.checked) {
+        // Agregar número de serie
+        if (!serials.includes(serialValue)) {
+          serials.push(serialValue);
+        }
+      } else {
+        // Remover número de serie
+        const index = serials.indexOf(serialValue);
+        if (index > -1) {
+          serials.splice(index, 1);
+        }
       }
-    });
-    serialTags?.addEventListener('click', (ev)=>{
-      const button = ev.target.closest('.remove-serial');
-      if(!button) return;
-      const serial = button.dataset.serial;
-      const serials = getSerials().filter(sn => sn !== serial);
+      
       setSerials(serials);
+    };
+
+    // Delegar eventos de checkboxes
+    checkboxContainer?.addEventListener('change', (e) => {
+      if (e.target.classList.contains('serial-checkbox')) {
+        handleCheckboxChange(e.target);
+      }
     });
 
     tr.__serialControls = {
       wrapper: serialWrapper,
-      search: serialSearch,
-      tags: serialTags,
+      container: checkboxContainer,
       hidden: serialHidden,
-      list: serialList,
-      reset: () => setSerials([]),
+      reset: () => {
+        setSerials([]);
+        updateCheckboxState();
+      },
       getSerials,
       setSerials,
+      loadCheckboxes: (serialNumbers) => {
+        if (!checkboxContainer) return;
+        
+        if (!serialNumbers || serialNumbers.length === 0) {
+          checkboxContainer.innerHTML = `
+            <div class="text-center text-muted py-3">
+              <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+              <p class="mb-0 mt-2">No hay números de serie disponibles para este producto</p>
+            </div>
+          `;
+          return;
+        }
+        
+        checkboxContainer.innerHTML = serialNumbers.map((sn, idx) => `
+          <div class="form-check mb-2 p-2" style="background-color: white; border-radius: 6px; border: 1px solid #dee2e6; transition: all 0.2s ease;" 
+               onmouseover="this.style.backgroundColor='#e7f3ff'; this.style.borderColor='#667eea';" 
+               onmouseout="this.style.backgroundColor='white'; this.style.borderColor='#dee2e6';">
+            <input class="form-check-input serial-checkbox" type="checkbox" value="${sn}" id="serial_${idx}_${Date.now()}" 
+                   style="cursor: pointer; width: 1.2rem; height: 1.2rem;">
+            <label class="form-check-label ms-2" for="serial_${idx}_${Date.now()}" style="cursor: pointer; font-family: 'Courier New', monospace; font-weight: 500;">
+              <i class="bi bi-upc text-primary"></i> ${sn}
+            </label>
+          </div>
+        `).join('');
+        
+        updateCheckboxState();
+      }
     };
 
     setSerials([]);
@@ -618,14 +725,15 @@
     const controls = tr.__serialControls;
     if(!controls) return;
     controls.reset();
-    controls.search.value = '';
     if(!productId){
       controls.wrapper.classList.add('d-none');
-      if(controls.list) controls.list.innerHTML = '';
+      if(controls.container) {
+        controls.container.innerHTML = '';
+      }
       return;
     }
     controls.wrapper.classList.remove('d-none');
-    loadSerialOptions(productId, controls.list);
+    loadSerialOptions(productId, controls);
   }
 
   function optionsProductos(){
@@ -634,7 +742,6 @@
 
   function addRow(preset=null){
     const tr = document.createElement('tr');
-    const serialListId = `serial-list-${Date.now()}-${Math.floor(Math.random()*1000)}`;
     tr.innerHTML = `
       <td>
         <select class="form-select prod">
@@ -642,17 +749,25 @@
           ${optionsProductos()}
         </select>
         <div class="serial-wrapper mt-2 d-none">
-          <label class="form-label mb-1 small text-uppercase text-muted">Números de serie</label>
-          <div class="input-group input-group-sm mb-2">
-            <input type="search" class="form-control serial-search" placeholder="Escribe o busca un número de serie" list="${serialListId}">
-            <button type="button" class="btn btn-outline-secondary add-serial" title="Agregar número de serie">
-              <i class="bi bi-plus-lg"></i>
-            </button>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label mb-0 fw-semibold">
+              <i class="bi bi-upc-scan text-primary"></i> Números de Serie
+            </label>
+            <span class="badge bg-success text-white serial-count-badge">
+              <i class="bi bi-check2-circle"></i> <span class="selected-count">0</span> seleccionados
+            </span>
           </div>
-          <datalist id="${serialListId}"></datalist>
-          <div class="serial-tags small text-secondary">Sin números capturados.</div>
+          
+          <div class="alert alert-info py-2 px-3 mb-2" style="border-radius: 8px; font-size: 0.9rem;">
+            <i class="bi bi-info-circle-fill"></i> 
+            <strong>Marca los números de serie que desees</strong> y la cantidad se ajustará automáticamente
+          </div>
+          
+          <div class="serial-checkboxes-container" style="max-height: 250px; overflow-y: auto; border: 2px solid #e9ecef; border-radius: 8px; padding: 10px; background-color: #f8f9fa;">
+            <!-- Los checkboxes se cargarán aquí dinámicamente -->
+          </div>
+          
           <input type="hidden" class="serials-field" value="[]">
-          <small class="text-secondary d-block mt-1">Captura manualmente o selecciona de la lista y presiona Enter.</small>
         </div>
       </td>
       <td>
@@ -712,6 +827,26 @@
       if (opt) {
         const stock = parseInt(opt.dataset.stock || 0);
         const qty = parseInt(this.value || 0);
+        
+        // Verificar si hay números de serie seleccionados
+        const controls = tr.__serialControls;
+        const serials = controls ? controls.getSerials() : [];
+        
+        if (serials.length > 0) {
+          // Si hay números de serie seleccionados, la cantidad está controlada por ellos
+          this.value = serials.length;
+          const warning = tr.querySelector('.stock-warning');
+          if (warning) {
+            warning.className = 'stock-warning text-info d-block mt-1';
+            warning.innerHTML = `<i class="bi bi-info-circle"></i> La cantidad está determinada por los ${serials.length} número(s) de serie seleccionados`;
+            setTimeout(() => {
+              warning.className = 'stock-warning d-none';
+              warning.innerHTML = '';
+            }, 3000);
+          }
+          calc();
+          return;
+        }
         
         if (qty > stock) {
           this.value = stock;

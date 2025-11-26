@@ -38,44 +38,89 @@ export default function PedidosPage() {
   const optimizableAssignments = pendingAssignments.filter(
     a => Number.isFinite(a.pedido.lat) && Number.isFinite(a.pedido.lng)
   );
-  const canOptimize = optimizableAssignments.length > 2;
+  const canOptimize = optimizableAssignments.length >= 2;
 
   const handleOptimizeRoutes = () => {
     if (!canOptimize || optimizing) return;
     setOptimizing(true);
 
     try {
+      // Ordenar por prioridad: fecha de asignación (más antiguas primero = mayor prioridad)
       const sorted = [...optimizableAssignments].sort(
         (a, b) => new Date(a.asignado_at).getTime() - new Date(b.asignado_at).getTime()
       );
 
-      const originPoint = sorted[0]?.origen;
-      const stops = sorted.map(assignment => `${assignment.pedido.lat},${assignment.pedido.lng}`);
-
-      if (stops.length < 2) {
-        alert('Se necesitan al menos dos puntos con coordenadas para optimizar.');
+      if (sorted.length < 2) {
+        alert('Se necesitan al menos dos pedidos con coordenadas para optimizar.');
+        setOptimizing(false);
         return;
       }
+
+      // Mostrar confirmación con el orden de entregas
+      const routeList = sorted
+        .map((a, idx) => `${idx + 1}. Pedido #${a.pedido.id} - ${a.pedido.direccion_entrega.substring(0, 50)}...`)
+        .join('\n');
+      
+      const confirmed = confirm(
+        `🚚 RUTA OPTIMIZADA\n\n` +
+        `Se generará una ruta con ${sorted.length} paradas en orden de prioridad:\n\n` +
+        `${routeList}\n\n` +
+        `¿Abrir en Google Maps?`
+      );
+
+      if (!confirmed) {
+        setOptimizing(false);
+        return;
+      }
+
+      // Generar URL de Google Maps con optimización
+      const originPoint = sorted[0]?.origen;
+      const stops = sorted.map(assignment => `${assignment.pedido.lat},${assignment.pedido.lng}`);
 
       const originParam = originPoint ? `${originPoint.lat},${originPoint.lng}` : '';
       const destination = stops[stops.length - 1];
       const waypointsList = stops.slice(0, -1);
+      
+      // Google Maps puede optimizar hasta 25 waypoints automáticamente
       const waypointParam = waypointsList.length
         ? `optimize:true|${waypointsList.join('|')}`
         : '';
 
       let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&dir_action=navigate';
+      
       if (originParam) {
+        // Tiene origen definido
         url += `&origin=${encodeURIComponent(originParam)}`;
-      }
-      url += `&destination=${encodeURIComponent(destination)}`;
-      if (waypointParam) {
-        url += `&waypoints=${encodeURIComponent(waypointParam)}`;
+        url += `&destination=${encodeURIComponent(destination)}`;
+        if (waypointParam) {
+          url += `&waypoints=${encodeURIComponent(waypointParam)}`;
+        }
+      } else {
+        // Si no hay origen definido, usar la primera parada como origen
+        url += `&origin=${encodeURIComponent(waypointsList[0])}`;
+        // Ajustar waypoints
+        const adjustedWaypoints = waypointsList.slice(1);
+        const adjustedWaypointParam = adjustedWaypoints.length
+          ? `optimize:true|${adjustedWaypoints.join('|')}`
+          : '';
+        url += `&destination=${encodeURIComponent(destination)}`;
+        if (adjustedWaypointParam) {
+          url += `&waypoints=${encodeURIComponent(adjustedWaypointParam)}`;
+        }
       }
 
+      // Abrir Google Maps
       window.open(url, '_blank');
+      
+      // Mostrar notificación de éxito
+      setTimeout(() => {
+        alert('✅ Ruta optimizada abierta en Google Maps');
+      }, 500);
+    } catch (error) {
+      console.error('Error al optimizar rutas:', error);
+      alert('❌ Error al generar la ruta optimizada. Por favor, intenta de nuevo.');
     } finally {
-      setTimeout(() => setOptimizing(false), 600);
+      setTimeout(() => setOptimizing(false), 1000);
     }
   };
 
@@ -134,20 +179,42 @@ export default function PedidosPage() {
       )}
 
       {canOptimize && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-5 mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-blue-900 font-semibold text-base sm:text-lg">Optimiza tus rutas</p>
-            <p className="text-sm sm:text-base text-blue-700">
-              Tienes {optimizableAssignments.length} destinos pendientes. Genera una sola ruta con optimización automática.
-            </p>
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-2xl p-5 sm:p-6 mb-5 shadow-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-2xl">🗺️</span>
+                <h3 className="text-blue-900 font-bold text-lg sm:text-xl">Optimización de Rutas</h3>
+              </div>
+              <p className="text-sm sm:text-base text-blue-800 mb-2">
+                Tienes <strong>{optimizableAssignments.length} pedidos pendientes</strong> con coordenadas válidas.
+              </p>
+              <p className="text-xs sm:text-sm text-blue-700 flex items-start gap-1">
+                <span className="flex-shrink-0">✨</span>
+                <span>Genera una ruta única optimizada por prioridad (orden de asignación) y abre directamente en Google Maps para navegar.</span>
+              </p>
+            </div>
+            <button
+              onClick={handleOptimizeRoutes}
+              disabled={optimizing}
+              className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base hover:from-blue-700 hover:to-indigo-700 active:from-blue-800 active:to-indigo-800 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-md hover:shadow-lg active:shadow-sm flex-shrink-0"
+            >
+              {optimizing ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Optimizando...</span>
+                </>
+              ) : (
+                <>
+                  <span>🚀</span>
+                  <span>Optimizar {optimizableAssignments.length} Rutas</span>
+                </>
+              )}
+            </button>
           </div>
-          <button
-            onClick={handleOptimizeRoutes}
-            disabled={optimizing}
-            className="inline-flex items-center justify-center bg-blue-600 text-white px-4 sm:px-6 py-2.5 rounded-lg font-semibold text-sm sm:text-base hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition"
-          >
-            {optimizing ? 'Optimizando...' : 'Optimizar rutas'}
-          </button>
         </div>
       )}
 

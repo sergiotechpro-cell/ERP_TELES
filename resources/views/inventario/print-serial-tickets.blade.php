@@ -63,6 +63,11 @@
             padding: 10px;
             border: 1px solid #000;
         }
+        .qr-code {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+        }
         .footer {
             text-align: center;
             border-top: 2px dashed #000;
@@ -108,10 +113,11 @@
             
             <div class="value">
                 <span class="label">Número de Serie:</span>
-            </div>
-            
-            <div class="barcode">
                 {{ $serialNumber->numero_serie }}
+            </div>
+
+            <div class="qr-code">
+                <img src="{{ $qrCodes[$serialNumber->id] }}" alt="Código QR - {{ $serialNumber->numero_serie }}" style="width: 150px; height: 150px;">
             </div>
             
             <div class="value">

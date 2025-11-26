@@ -91,7 +91,23 @@
                 @foreach($pedido->items as $it)
                   @php $sub = $it->precio_unitario * $it->cantidad; $total+=$sub; @endphp
                   <tr>
-                    <td>{{ $it->product->descripcion ?? '—' }}</td>
+                    <td>
+                      <div class="fw-medium">{{ $it->product->descripcion ?? '—' }}</div>
+                      @if(!empty($it->seriales) && is_array($it->seriales))
+                        <div class="mt-2">
+                          <small class="text-secondary d-block mb-1">
+                            <i class="bi bi-upc-scan"></i> Números de Serie:
+                          </small>
+                          <div class="d-flex flex-wrap gap-1">
+                            @foreach($it->seriales as $serial)
+                              <span class="badge bg-primary-subtle text-primary-emphasis" style="font-family: 'Courier New', monospace; font-size: 0.8rem;">
+                                <i class="bi bi-qr-code-scan"></i> {{ $serial }}
+                              </span>
+                            @endforeach
+                          </div>
+                        </div>
+                      @endif
+                    </td>
                     <td>{{ $it->warehouse->nombre ?? '—' }}</td>
                     <td>{{ $it->cantidad }}</td>
                     <td>${{ number_format($it->precio_unitario,2) }}</td>

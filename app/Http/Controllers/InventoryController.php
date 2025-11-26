@@ -6,11 +6,18 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use App\Models\WarehouseProduct;
 use App\Models\SerialNumber;
+use App\Services\QRService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InventoryController extends Controller
 {
+    protected $qrService;
+
+    public function __construct(QRService $qrService)
+    {
+        $this->qrService = $qrService;
+    }
     public function index()
     {
         $productos = Product::with(['warehouses' => fn($q) => $q->withPivot('stock')])
@@ -232,7 +239,11 @@ class InventoryController extends Controller
     public function printSerialTicket(SerialNumber $serialNumber)
     {
         $serialNumber->load('warehouseProduct.product');
-        return view('inventario.print-serial-ticket', compact('serialNumber'));
+
+        // Generar código QR con el número de serie
+        $qrCode = $this->qrService->generateSerialQR($serialNumber->numero_serie);
+
+        return view('inventario.print-serial-ticket', compact('serialNumber', 'qrCode'));
     }
 
     /**
@@ -244,7 +255,13 @@ class InventoryController extends Controller
         $serialNumbers = SerialNumber::whereIn('id', $serialIds)
             ->with('warehouseProduct.product')
             ->get();
-        
-        return view('inventario.print-serial-tickets', compact('serialNumbers'));
+
+        // Generar códigos QR para cada número de serie
+        $qrCodes = [];
+        foreach ($serialNumbers as $serial) {
+            $qrCodes[$serial->id] = $this->qrService->generateSerialQR($serial->numero_serie);
+        }
+
+        return view('inventario.print-serial-tickets', compact('serialNumbers', 'qrCodes'));
     }
 }

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CourierController;
 use App\Models\SerialNumber;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,24 @@ Route::get('/seriales', function(Request $r){
     return SerialNumber::whereHas('warehouseProduct', fn($q)=>$q->where('product_id',$pid))
         ->limit(200)
         ->get(['id','numero_serie']);
+});
+
+// Obtener items de un pedido con sus números de serie
+Route::get('/pedidos/{order}/items', function(Order $order){
+    $items = $order->items()
+        ->with('product:id,descripcion')
+        ->get(['id', 'order_id', 'product_id', 'cantidad', 'seriales'])
+        ->map(function($item) {
+            return [
+                'id' => $item->id,
+                'product_id' => $item->product_id,
+                'product_name' => $item->product->descripcion ?? '',
+                'cantidad' => $item->cantidad,
+                'seriales' => $item->seriales ?? [],
+            ];
+        });
+    
+    return response()->json($items);
 });
 
 // API para la app del chofer
